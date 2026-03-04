@@ -1,1 +1,10 @@
 project_id = "tazkjuqqmopyaevfufny"
+
+[functions.suggest-competitors]
+verify_jwt = false
+
+[functions.suggest-categories]
+verify_jwt = false
+
+[functions.run-analysis]
+verify_jwt = false
