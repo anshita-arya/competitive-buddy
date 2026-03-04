@@ -171,7 +171,7 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">✓ Completed</Badge>
+          <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5">✓ Completed</Badge>
           {polling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
         </div>
       </div>
@@ -315,9 +315,9 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
               {/* Score legend */}
               <div className="p-4 border-t border-border flex flex-wrap gap-4 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">Threat score legend:</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-100 border border-red-200 inline-block" /> 8–10 High threat</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-100 border border-amber-200 inline-block" /> 6–7 Moderate</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-200 inline-block" /> 1–5 Lower threat</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-destructive/15 border border-destructive/25 inline-block" /> 8–10 High threat</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-secondary border border-border inline-block" /> 6–7 Moderate</span>
+                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary/10 border border-primary/20 inline-block" /> 1–5 Lower threat</span>
               </div>
             </CardContent>
           </Card>
