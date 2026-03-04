@@ -14,7 +14,154 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analyses: {
+        Row: {
+          created_at: string
+          executive_summary: string | null
+          id: string
+          recommendations: string | null
+          status: string
+          updated_at: string
+          user_company: string
+          user_product: string
+          user_role: string
+        }
+        Insert: {
+          created_at?: string
+          executive_summary?: string | null
+          id?: string
+          recommendations?: string | null
+          status?: string
+          updated_at?: string
+          user_company: string
+          user_product: string
+          user_role: string
+        }
+        Update: {
+          created_at?: string
+          executive_summary?: string | null
+          id?: string
+          recommendations?: string | null
+          status?: string
+          updated_at?: string
+          user_company?: string
+          user_product?: string
+          user_role?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_data: {
+        Row: {
+          ai_summary: string | null
+          analysis_id: string
+          category: string
+          competitor_id: string
+          created_at: string
+          id: string
+          score: number | null
+          scraped_content: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          analysis_id: string
+          category: string
+          competitor_id: string
+          created_at?: string
+          id?: string
+          score?: number | null
+          scraped_content?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          analysis_id?: string
+          category?: string
+          competitor_id?: string
+          created_at?: string
+          id?: string
+          score?: number | null
+          scraped_content?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_data_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_data_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitors: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          id: string
+          name: string
+          type: string
+          website: string | null
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          id?: string
+          name: string
+          type?: string
+          website?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          type?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitors_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
