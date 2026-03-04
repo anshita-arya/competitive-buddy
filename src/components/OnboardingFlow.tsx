@@ -1,0 +1,462 @@
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2, ArrowRight, Plus, X, Check, Globe, Zap, Building2, User, Layers } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface OnboardingFlowProps {
+  onComplete: (analysisId: string) => void;
+}
+
+type Step = 'profile' | 'competitors' | 'categories' | 'launching';
+
+interface CompetitorSuggestion {
+  name: string;
+  website: string;
+  type: 'direct' | 'disruptor';
+  description: string;
+}
+
+interface CategorySuggestion {
+  name: string;
+  description: string;
+}
+
+const STEPS = [
+  { id: 'profile', label: 'Your Profile', icon: User },
+  { id: 'competitors', label: 'Competitors', icon: Building2 },
+  { id: 'categories', label: 'Categories', icon: Layers },
+  { id: 'launching', label: 'Analyzing', icon: Zap },
+];
+
+export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+  const { toast } = useToast();
+  const [step, setStep] = useState<Step>('profile');
+
+  // Profile
+  const [product, setProduct] = useState('');
+  const [company, setCompany] = useState('');
+  const [role, setRole] = useState('');
+
+  // Competitors
+  const [suggestedCompetitors, setSuggestedCompetitors] = useState<CompetitorSuggestion[]>([]);
+  const [selectedCompetitors, setSelectedCompetitors] = useState<Set<string>>(new Set());
+  const [customCompetitor, setCustomCompetitor] = useState('');
+  const [customCompetitors, setCustomCompetitors] = useState<CompetitorSuggestion[]>([]);
+  const [loadingCompetitors, setLoadingCompetitors] = useState(false);
+
+  // Categories
+  const [suggestedCategories, setSuggestedCategories] = useState<CategorySuggestion[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [customCategory, setCustomCategory] = useState('');
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  const [launching, setLaunching] = useState(false);
+
+  const stepIndex = STEPS.findIndex(s => s.id === step);
+
+  async function handleProfileSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!product.trim() || !company.trim() || !role.trim()) return;
+
+    setLoadingCompetitors(true);
+    setStep('competitors');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-competitors', {
+        body: { product, company, role },
+      });
+      if (error) throw error;
+      setSuggestedCompetitors(data.competitors || []);
+      // Auto-select first 4
+      const autoSelect = new Set<string>(data.competitors?.slice(0, 4).map((c: CompetitorSuggestion) => c.name) || []);
+      setSelectedCompetitors(autoSelect);
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setLoadingCompetitors(false);
+    }
+  }
+
+  function toggleCompetitor(name: string) {
+    setSelectedCompetitors(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  function addCustomCompetitor() {
+    if (!customCompetitor.trim()) return;
+    const c: CompetitorSuggestion = {
+      name: customCompetitor.trim(),
+      website: '',
+      type: 'direct',
+      description: 'Custom competitor',
+    };
+    setCustomCompetitors(prev => [...prev, c]);
+    setSelectedCompetitors(prev => new Set([...prev, c.name]));
+    setCustomCompetitor('');
+  }
+
+  async function handleCompetitorsNext() {
+    if (selectedCompetitors.size === 0) return;
+    setLoadingCategories(true);
+    setStep('categories');
+
+    try {
+      const allCompetitors = [...suggestedCompetitors, ...customCompetitors];
+      const selected = allCompetitors.filter(c => selectedCompetitors.has(c.name)).map(c => c.name);
+      const { data, error } = await supabase.functions.invoke('suggest-categories', {
+        body: { product, company, competitors: selected },
+      });
+      if (error) throw error;
+      setSuggestedCategories(data.categories || []);
+      // Auto-select all
+      setSelectedCategories(new Set(data.categories?.map((c: CategorySuggestion) => c.name) || []));
+    } catch (err) {
+      toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setLoadingCategories(false);
+    }
+  }
+
+  async function handleLaunch() {
+    if (selectedCategories.size === 0) return;
+    setLaunching(true);
+    setStep('launching');
+
+    try {
+      // 1. Create analysis record
+      const { data: analysis, error: aErr } = await supabase.from('analyses').insert({
+        user_product: product,
+        user_role: role,
+        user_company: company,
+        status: 'pending',
+      }).select().single();
+      if (aErr || !analysis) throw new Error(aErr?.message || 'Failed to create analysis');
+
+      // 2. Insert competitors
+      const allCompetitors = [...suggestedCompetitors, ...customCompetitors];
+      const selected = allCompetitors.filter(c => selectedCompetitors.has(c.name));
+      await supabase.from('competitors').insert(
+        selected.map(c => ({
+          analysis_id: analysis.id,
+          name: c.name,
+          website: c.website || null,
+          type: c.type,
+        }))
+      );
+
+      // 3. Insert categories
+      await supabase.from('categories').insert(
+        Array.from(selectedCategories).map(name => ({
+          analysis_id: analysis.id,
+          name,
+        }))
+      );
+
+      // 4. Kick off analysis
+      const { error: runErr } = await supabase.functions.invoke('run-analysis', {
+        body: { analysis_id: analysis.id },
+      });
+      if (runErr) throw runErr;
+
+      onComplete(analysis.id);
+    } catch (err) {
+      toast({ title: 'Analysis failed', description: (err as Error).message, variant: 'destructive' });
+      setStep('categories');
+      setLaunching(false);
+    }
+  }
+
+  const allCompetitors = [...suggestedCompetitors, ...customCompetitors];
+
+  return (
+    <div className="min-h-full bg-gradient-to-br from-background via-background to-secondary/20 flex items-start justify-center py-12 px-4">
+      <div className="w-full max-w-2xl">
+        {/* Step indicator */}
+        <div className="flex items-center justify-center gap-2 mb-10">
+          {STEPS.map((s, i) => {
+            const Icon = s.icon;
+            const isCurrent = s.id === step;
+            const isDone = i < stepIndex;
+            return (
+              <div key={s.id} className="flex items-center gap-2">
+                <div className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+                  isCurrent && 'intel-gradient text-white shadow-md',
+                  isDone && 'bg-primary/10 text-primary',
+                  !isCurrent && !isDone && 'text-muted-foreground'
+                )}>
+                  {isDone ? <Check className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
+                  <span className="hidden sm:inline">{s.label}</span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={cn('w-6 h-px', i < stepIndex ? 'bg-primary' : 'bg-border')} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Step: Profile */}
+        {step === 'profile' && (
+          <Card className="border-border/60 shadow-xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl">Tell us about your product</CardTitle>
+              <CardDescription>We'll use this to suggest relevant competitors and analysis categories.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleProfileSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="product">Product Name</Label>
+                  <Input
+                    id="product"
+                    placeholder="e.g. Notion, Slack, Figma"
+                    value={product}
+                    onChange={e => setProduct(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company">Company</Label>
+                  <Input
+                    id="company"
+                    placeholder="e.g. Notion Labs, Inc."
+                    value={company}
+                    onChange={e => setCompany(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Your Role</Label>
+                  <Input
+                    id="role"
+                    placeholder="e.g. Product Manager, Founder, CMO"
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full gap-2 intel-gradient text-white border-0" size="lg">
+                  Find Competitors <ArrowRight className="w-4 h-4" />
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step: Competitors */}
+        {step === 'competitors' && (
+          <Card className="border-border/60 shadow-xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl">Select your competitors</CardTitle>
+              <CardDescription>We've suggested direct competitors and disruptors based on your product.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {loadingCompetitors ? (
+                <div className="flex flex-col items-center py-12 gap-3 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm">Finding competitors with AI...</p>
+                </div>
+              ) : (
+                <>
+                  {['direct', 'disruptor'].map(type => {
+                    const list = allCompetitors.filter(c => c.type === type);
+                    if (!list.length) return null;
+                    return (
+                      <div key={type}>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                          {type === 'direct' ? '⚔️ Direct Competitors' : '⚡ Disruptors & Emerging Players'}
+                        </p>
+                        <div className="space-y-2">
+                          {list.map(c => (
+                            <button
+                              key={c.name}
+                              onClick={() => toggleCompetitor(c.name)}
+                              className={cn(
+                                'w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3',
+                                selectedCompetitors.has(c.name)
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border hover:border-primary/40'
+                              )}
+                            >
+                              <div className={cn(
+                                'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors',
+                                selectedCompetitors.has(c.name) ? 'border-primary bg-primary' : 'border-border'
+                              )}>
+                                {selectedCompetitors.has(c.name) && <Check className="w-3 h-3 text-white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-sm">{c.name}</span>
+                                  {c.website && (
+                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Globe className="w-3 h-3" />{c.website}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom competitor input */}
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">➕ Add Custom</p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Competitor name or website"
+                        value={customCompetitor}
+                        onChange={e => setCustomCompetitor(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addCustomCompetitor()}
+                        className="flex-1"
+                      />
+                      <Button type="button" variant="outline" onClick={addCustomCompetitor} size="sm">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setStep('profile')} className="flex-1">Back</Button>
+                    <Button
+                      onClick={handleCompetitorsNext}
+                      disabled={selectedCompetitors.size === 0}
+                      className="flex-2 gap-2 intel-gradient text-white border-0"
+                    >
+                      Next: Categories <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step: Categories */}
+        {step === 'categories' && (
+          <Card className="border-border/60 shadow-xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl">Choose analysis categories</CardTitle>
+              <CardDescription>Select which dimensions to analyze across all competitors.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {loadingCategories ? (
+                <div className="flex flex-col items-center py-12 gap-3 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm">Generating relevant categories...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestedCategories.map(cat => (
+                      <button
+                        key={cat.name}
+                        onClick={() => setSelectedCategories(prev => {
+                          const next = new Set(prev);
+                          if (next.has(cat.name)) next.delete(cat.name);
+                          else next.add(cat.name);
+                          return next;
+                        })}
+                        title={cat.description}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-sm font-medium border transition-all',
+                          selectedCategories.has(cat.name)
+                            ? 'intel-gradient text-white border-transparent shadow'
+                            : 'border-border text-foreground hover:border-primary/50'
+                        )}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom category */}
+                  <div className="pt-2 border-t border-border">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add a custom category..."
+                        value={customCategory}
+                        onChange={e => setCustomCategory(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && customCategory.trim()) {
+                            setSuggestedCategories(prev => [...prev, { name: customCategory.trim(), description: '' }]);
+                            setSelectedCategories(prev => new Set([...prev, customCategory.trim()]));
+                            setCustomCategory('');
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (!customCategory.trim()) return;
+                          setSuggestedCategories(prev => [...prev, { name: customCategory.trim(), description: '' }]);
+                          setSelectedCategories(prev => new Set([...prev, customCategory.trim()]));
+                          setCustomCategory('');
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">{selectedCategories.size} categories selected</p>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setStep('competitors')} className="flex-1">Back</Button>
+                    <Button
+                      onClick={handleLaunch}
+                      disabled={selectedCategories.size === 0 || launching}
+                      className="flex-2 gap-2 intel-gradient text-white border-0"
+                    >
+                      {launching ? <><Loader2 className="w-4 h-4 animate-spin" /> Running Analysis...</> : <><Zap className="w-4 h-4" /> Run Analysis</>}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step: Launching */}
+        {step === 'launching' && (
+          <Card className="border-border/60 shadow-xl">
+            <CardContent className="py-16 flex flex-col items-center gap-6 text-center">
+              <div className="w-16 h-16 rounded-2xl intel-gradient flex items-center justify-center animate-pulse">
+                <Zap className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Running competitive analysis...</h2>
+                <p className="text-muted-foreground max-w-sm">
+                  Scraping competitor data with Firecrawl and synthesizing insights with Gemini. This may take 1-2 minutes.
+                </p>
+              </div>
+              <div className="w-full max-w-xs space-y-2">
+                {['Scraping competitor websites', 'Analyzing product launches', 'Processing blog & announcements', 'Synthesizing insights with AI'].map((label, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary flex-shrink-0" style={{ animationDelay: `${i * 200}ms` }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
