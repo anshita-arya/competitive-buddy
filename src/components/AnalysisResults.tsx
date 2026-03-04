@@ -28,9 +28,9 @@ interface Competitor {
 function ScoreBadge({ score }: { score: number | null }) {
   if (!score) return <span className="text-muted-foreground text-xs">—</span>;
   const color =
-    score >= 8 ? 'bg-red-100 text-red-700 border-red-200' :
-    score >= 6 ? 'bg-amber-100 text-amber-700 border-amber-200' :
-    'bg-emerald-100 text-emerald-700 border-emerald-200';
+    score >= 8 ? 'bg-destructive/10 text-destructive border-destructive/20' :
+    score >= 6 ? 'bg-[hsl(38_92%_50%/0.1)] text-[hsl(38_60%_35%)] border-[hsl(38_92%_50%/0.3)]' :
+    'bg-primary/10 text-primary border-primary/20';
   return (
     <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold border', color)}>
       {score}/10
