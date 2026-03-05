@@ -48,15 +48,36 @@ async function scrapeCompetitor(name: string, website: string, category: string)
   }
 }
 
+function classifyRole(userRole: string): 'internal' | 'outbound' {
+  const role = userRole.toLowerCase();
+  const outboundKeywords = [
+    'sales', 'account executive', 'account manager', 'field', 'ae', 'sdr', 'bdr',
+    'solutions engineer', 'se ', ' se', 'marketing', 'cmo', 'growth', 'revenue',
+    'business development', 'partnerships', 'customer success', 'cs ', ' cs',
+  ];
+  return outboundKeywords.some(k => role.includes(k)) ? 'outbound' : 'internal';
+}
+
 async function analyzeWithAI(
   userProduct: string,
   userCompany: string,
+  userRole: string,
   competitors: Array<{ name: string; website: string; type: string }>,
   categories: string[],
   scrapedData: Record<string, Record<string, string>>
 ): Promise<{ executive_summary: string; competitor_analysis: Record<string, Record<string, { summary: string; score: number }>>; recommendations: string }> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+  const roleType = classifyRole(userRole);
+
+  const systemPrompt = roleType === 'outbound'
+    ? `You are a competitive intelligence specialist supporting sales teams at ${userCompany}. Your goal is to help salespeople win deals. ALWAYS lead with ${userCompany}'s strengths and advantages. Frame competitor features as trade-offs, limitations, or signs of market validation. Highlight where ${userCompany} wins clearly. Minimize competitor strengths by contextualizing them as niche or narrow. Help the salesperson craft a compelling story about why ${userCompany} is the better choice. Always use the analyze_competitors tool.`
+    : `You are a senior competitive intelligence analyst providing deep technical analysis for internal product teams at ${userCompany}. Be specific, data-driven, and unbiased. Identify feature gaps, technical moats, architectural signals, API quality, performance benchmarks, and roadmap indicators. Surface real threats and opportunities with actionable depth. Always use the analyze_competitors tool.`;
+
+  const userPromptSuffix = roleType === 'outbound'
+    ? `\n\nIMPORTANT: This analysis is for a sales/outbound role (${userRole}). Frame every category to highlight ${userCompany}'s strengths first. Show how competitors validate the market but fall short where ${userCompany} excels. Scores should reflect how well competitors serve as a foil — higher scores mean they are a stronger comparison point to highlight ${userCompany}'s advantages.`
+    : `\n\nIMPORTANT: This analysis is for an internal/technical role (${userRole}). Provide deep technical insights: feature parity gaps, architectural approaches, technical debt signals, API depth, scalability indicators, and developer experience. Be candid about where competitors excel and where ${userCompany} must improve.`;
 
   const context = competitors.map(c => {
     const catData = categories.map(cat => {
@@ -76,11 +97,11 @@ async function analyzeWithAI(
       messages: [
         {
           role: 'system',
-          content: `You are a senior competitive intelligence analyst. Provide deep, actionable analysis for product teams. Be specific, insightful, and data-driven. Always use the analyze_competitors tool.`,
+          content: systemPrompt,
         },
         {
           role: 'user',
-          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\n\nCompetitor data:\n${context}\n\nCategories to analyze: ${categories.join(', ')}\n\nProvide comprehensive competitive analysis including executive summary, per-competitor per-category analysis with scores (1-10), and strategic recommendations.`,
+          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\nRole: ${userRole}\n\nCompetitor data:\n${context}\n\nCategories to analyze: ${categories.join(', ')}\n\nProvide comprehensive competitive analysis including executive summary, per-competitor per-category analysis with scores (1-10), and strategic recommendations.${userPromptSuffix}`,
         },
       ],
       tools: [

@@ -117,9 +117,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         body: { product, company, competitors: selected },
       });
       if (error) throw error;
-      setSuggestedCategories(data.categories || []);
-      // Auto-select all
-      setSelectedCategories(new Set(data.categories?.map((c: CategorySuggestion) => c.name) || []));
+      const cats: CategorySuggestion[] = data.categories || [];
+      setSuggestedCategories(cats);
+      // Auto-select only the first category
+      setSelectedCategories(cats.length > 0 ? new Set([cats[0].name]) : new Set());
     } catch (err) {
       toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
     } finally {
@@ -360,27 +361,38 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestedCategories.map(cat => (
-                      <button
-                        key={cat.name}
-                        onClick={() => setSelectedCategories(prev => {
-                          const next = new Set(prev);
-                          if (next.has(cat.name)) next.delete(cat.name);
-                          else next.add(cat.name);
-                          return next;
-                        })}
-                        title={cat.description}
-                        className={cn(
-                          'px-3 py-1.5 rounded-full text-sm font-medium border transition-all',
-                          selectedCategories.has(cat.name)
-                            ? 'intel-gradient text-white border-transparent shadow'
-                            : 'border-border text-foreground hover:border-primary/50'
-                        )}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {suggestedCategories.map(cat => {
+                      const isSelected = selectedCategories.has(cat.name);
+                      return (
+                        <button
+                          key={cat.name}
+                          onClick={() => setSelectedCategories(prev => {
+                            const next = new Set(prev);
+                            if (next.has(cat.name)) next.delete(cat.name);
+                            else next.add(cat.name);
+                            return next;
+                          })}
+                          className={cn(
+                            'relative text-left p-3 rounded-lg border transition-all',
+                            isSelected
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/40'
+                          )}
+                        >
+                          <div className={cn(
+                            'absolute top-2 right-2 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
+                            isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                          )}>
+                            {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                          </div>
+                          <p className="font-medium text-sm pr-6 leading-snug">{cat.name}</p>
+                          {cat.description && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{cat.description}</p>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Custom category */}
