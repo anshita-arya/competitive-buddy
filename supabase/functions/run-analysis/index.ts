@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
     const aiResult = await analyzeWithAI(
       analysis.user_product,
       analysis.user_company,
+      analysis.user_role,
       competitors,
       categoryNames,
       scrapedData
