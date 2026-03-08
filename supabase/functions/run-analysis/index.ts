@@ -206,6 +206,9 @@ Deno.serve(async (req) => {
       scrapedData
     );
 
+    // Log AI result structure for debugging
+    console.log('AI result keys:', JSON.stringify(Object.keys(aiResult.competitor_analysis || {})));
+
     // Store competitor_data rows — use fuzzy key matching to handle AI returning slightly different casing/whitespace
     function findKey(obj: Record<string, unknown>, target: string): string | undefined {
       if (!obj) return undefined;
