@@ -89,8 +89,8 @@ const Index = () => {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
           >
-            <Linkedin className="w-4 h-4" />
             Connect
+            <Linkedin className="w-4 h-4" />
           </a>
         </div>
       </footer>
