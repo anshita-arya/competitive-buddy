@@ -21,11 +21,11 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a competitive intelligence expert. Given a product, company and user role, suggest relevant competitors. Always respond using the suggest_competitors tool.`,
+            content: `You are a competitive intelligence expert. Given a product, company and user role, suggest relevant competitors. For each competitor company, identify the specific competing product. Always respond using the suggest_competitors tool.`,
           },
           {
             role: 'user',
-            content: `Product: ${product}\nCompany: ${company}\nUser role: ${role}\n\nSuggest 4-5 direct competitors and 3-4 disruptive/emerging players.`,
+            content: `Product: ${product}\nCompany: ${company}\nUser role: ${role}\n\nSuggest 4-5 direct competitors and 3-4 disruptive/emerging players. For each, provide both the company name AND the specific competing product name.`,
           },
         ],
         tools: [
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
             type: 'function',
             function: {
               name: 'suggest_competitors',
-              description: 'Return a list of suggested competitors with type classification',
+              description: 'Return a list of suggested competitors with type classification and their competing products',
               parameters: {
                 type: 'object',
                 properties: {
@@ -42,12 +42,13 @@ Deno.serve(async (req) => {
                     items: {
                       type: 'object',
                       properties: {
-                        name: { type: 'string' },
-                        website: { type: 'string' },
+                        name: { type: 'string', description: 'The company name' },
+                        product: { type: 'string', description: 'The specific competing product or service offered by this company' },
+                        website: { type: 'string', description: 'The company or product website' },
                         type: { type: 'string', enum: ['direct', 'disruptor'] },
-                        description: { type: 'string' },
+                        description: { type: 'string', description: 'Brief description of why this is a competitor' },
                       },
-                      required: ['name', 'website', 'type', 'description'],
+                      required: ['name', 'product', 'website', 'type', 'description'],
                       additionalProperties: false,
                     },
                   },
