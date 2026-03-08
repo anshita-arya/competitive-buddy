@@ -22,8 +22,8 @@ const Index = () => {
               <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
-              <span className="font-bold text-lg tracking-tight intel-gradient-text">CompeteIQ</span>
-              <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">Competitor Intelligence</span>
+              <span className="font-bold text-lg tracking-tight intel-gradient-text">Competitive Buddy</span>
+              <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">by HPE</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
