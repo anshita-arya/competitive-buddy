@@ -230,37 +230,31 @@ Deno.serve(async (req) => {
       scrapedData
     );
 
-    // Log AI result structure for debugging
-    console.log('AI result keys:', JSON.stringify(Object.keys(aiResult.competitor_analysis || {})));
+    // Log AI result for debugging
+    console.log(`AI returned ${aiResult.analysis_items?.length ?? 0} analysis items`);
 
-    // Store competitor_data rows — use fuzzy key matching to handle AI returning slightly different casing/whitespace
-    function findKey(obj: Record<string, unknown>, target: string): string | undefined {
-      if (!obj) return undefined;
-      const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const normTarget = norm(target);
-      return Object.keys(obj).find(k => norm(k) === normTarget) ?? Object.keys(obj).find(k => norm(k).includes(normTarget) || normTarget.includes(norm(k)));
+    // Build a lookup map from the flat analysis_items array
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const itemMap = new Map<string, { summary: string; score: number }>();
+    for (const item of (aiResult.analysis_items || [])) {
+      const key = `${norm(item.competitor)}::${norm(item.category)}`;
+      itemMap.set(key, { summary: item.summary, score: item.score });
     }
 
+    // Store competitor_data rows
     const dataRows = [];
     for (const comp of competitors) {
-      const compKey = findKey(aiResult.competitor_analysis as Record<string, unknown>, comp.name);
-      const compData = compKey ? (aiResult.competitor_analysis as Record<string, Record<string, { summary: string; score: number }>>)[compKey] : null;
-
-      console.log(`Competitor "${comp.name}" -> AI key "${compKey}". Categories in AI response: ${compData ? Object.keys(compData).join(', ') : 'NONE'}`);
-
       for (const cat of categoryNames) {
-        const catKey = compData ? findKey(compData as Record<string, unknown>, cat) : undefined;
-        const catAnalysis = catKey ? compData![catKey] : undefined;
-
-        console.log(`  Category "${cat}" -> AI key "${catKey}" -> score: ${catAnalysis?.score ?? 'NULL'}`);
-
+        const key = `${norm(comp.name)}::${norm(cat)}`;
+        const item = itemMap.get(key);
+        console.log(`  "${comp.name}" × "${cat}" -> key="${key}" -> found=${!!item} score=${item?.score ?? 'NULL'}`);
         dataRows.push({
           analysis_id,
           competitor_id: comp.id,
           category: cat,
           scraped_content: scrapedData[comp.name]?.[cat] || null,
-          ai_summary: catAnalysis?.summary || null,
-          score: catAnalysis?.score ?? null,
+          ai_summary: item?.summary || null,
+          score: item?.score ?? null,
         });
       }
     }
