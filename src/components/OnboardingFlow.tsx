@@ -3,10 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, ArrowRight, Plus, X, Check, Globe, Zap, Building2, User, Layers } from 'lucide-react';
+import { Loader2, ArrowRight, Plus, Check, Globe, Zap, Building2, User, Layers, Pencil, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface OnboardingFlowProps {
@@ -16,7 +15,8 @@ interface OnboardingFlowProps {
 type Step = 'profile' | 'competitors' | 'categories' | 'launching';
 
 interface CompetitorSuggestion {
-  name: string;
+  name: string;       // company name
+  product: string;    // competing product name
   website: string;
   type: 'direct' | 'disruptor';
   description: string;
@@ -46,7 +46,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Competitors
   const [suggestedCompetitors, setSuggestedCompetitors] = useState<CompetitorSuggestion[]>([]);
   const [selectedCompetitors, setSelectedCompetitors] = useState<Set<string>>(new Set());
-  const [customCompetitor, setCustomCompetitor] = useState('');
+  // Track per-competitor product overrides keyed by company name
+  const [productOverrides, setProductOverrides] = useState<Record<string, string>>({});
+  // Track which competitor is being edited
+  const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [editingProductValue, setEditingProductValue] = useState('');
+
+  const [customCompetitorName, setCustomCompetitorName] = useState('');
+  const [customCompetitorProduct, setCustomCompetitorProduct] = useState('');
   const [customCompetitors, setCustomCompetitors] = useState<CompetitorSuggestion[]>([]);
   const [loadingCompetitors, setLoadingCompetitors] = useState(false);
 
@@ -72,9 +79,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         body: { product, company, role },
       });
       if (error) throw error;
-      setSuggestedCompetitors(data.competitors || []);
+      const competitors: CompetitorSuggestion[] = (data.competitors || []).map((c: CompetitorSuggestion) => ({
+        ...c,
+        product: c.product || c.name,
+      }));
+      setSuggestedCompetitors(competitors);
       // Auto-select first 4
-      const autoSelect = new Set<string>(data.competitors?.slice(0, 4).map((c: CompetitorSuggestion) => c.name) || []);
+      const autoSelect = new Set<string>(competitors.slice(0, 4).map((c) => c.name));
       setSelectedCompetitors(autoSelect);
     } catch (err) {
       toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
@@ -92,17 +103,31 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     });
   }
 
+  function startEditProduct(companyName: string, currentProduct: string) {
+    setEditingProduct(companyName);
+    setEditingProductValue(productOverrides[companyName] ?? currentProduct);
+  }
+
+  function saveEditProduct(companyName: string) {
+    if (editingProductValue.trim()) {
+      setProductOverrides(prev => ({ ...prev, [companyName]: editingProductValue.trim() }));
+    }
+    setEditingProduct(null);
+  }
+
   function addCustomCompetitor() {
-    if (!customCompetitor.trim()) return;
+    if (!customCompetitorName.trim()) return;
     const c: CompetitorSuggestion = {
-      name: customCompetitor.trim(),
+      name: customCompetitorName.trim(),
+      product: customCompetitorProduct.trim() || customCompetitorName.trim(),
       website: '',
       type: 'direct',
       description: 'Custom competitor',
     };
     setCustomCompetitors(prev => [...prev, c]);
     setSelectedCompetitors(prev => new Set([...prev, c.name]));
-    setCustomCompetitor('');
+    setCustomCompetitorName('');
+    setCustomCompetitorProduct('');
   }
 
   async function handleCompetitorsNext() {
@@ -119,7 +144,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       if (error) throw error;
       const cats: CategorySuggestion[] = data.categories || [];
       setSuggestedCategories(cats);
-      // Auto-select only the first category
       setSelectedCategories(cats.length > 0 ? new Set([cats[0].name]) : new Set());
     } catch (err) {
       toast({ title: 'Error', description: (err as Error).message, variant: 'destructive' });
@@ -134,7 +158,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setStep('launching');
 
     try {
-      // 1. Create analysis record
       const { data: analysis, error: aErr } = await supabase.from('analyses').insert({
         user_product: product,
         user_role: role,
@@ -143,19 +166,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }).select().single();
       if (aErr || !analysis) throw new Error(aErr?.message || 'Failed to create analysis');
 
-      // 2. Insert competitors
       const allCompetitors = [...suggestedCompetitors, ...customCompetitors];
       const selected = allCompetitors.filter(c => selectedCompetitors.has(c.name));
+      // Use overridden product names where available; store as "Company - Product" for analysis
       await supabase.from('competitors').insert(
         selected.map(c => ({
           analysis_id: analysis.id,
-          name: c.name,
+          name: `${c.name} – ${productOverrides[c.name] ?? c.product}`,
           website: c.website || null,
           type: c.type,
         }))
       );
 
-      // 3. Insert categories
       await supabase.from('categories').insert(
         Array.from(selectedCategories).map(name => ({
           analysis_id: analysis.id,
@@ -163,7 +185,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         }))
       );
 
-      // 4. Kick off analysis
       const { error: runErr } = await supabase.functions.invoke('run-analysis', {
         body: { analysis_id: analysis.id },
       });
@@ -259,7 +280,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <Card className="border-border/60 shadow-xl">
             <CardHeader className="pb-4">
               <CardTitle className="text-2xl">Select your competitors</CardTitle>
-              <CardDescription>We've suggested direct competitors and disruptors based on your product.</CardDescription>
+              <CardDescription>
+                We've suggested direct competitors and disruptors. You can correct the competing product if needed.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               {loadingCompetitors ? (
@@ -269,45 +292,101 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </div>
               ) : (
                 <>
-                  {['direct', 'disruptor'].map(type => {
+                  {(['direct', 'disruptor'] as const).map(type => {
                     const list = allCompetitors.filter(c => c.type === type);
                     if (!list.length) return null;
                     return (
                       <div key={type}>
-                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                           {type === 'direct' ? '⚔️ Direct Competitors' : '⚡ Disruptors & Emerging Players'}
                         </p>
                         <div className="space-y-2">
-                          {list.map(c => (
-                            <button
-                              key={c.name}
-                              onClick={() => toggleCompetitor(c.name)}
-                              className={cn(
-                                'w-full text-left p-3 rounded-lg border transition-all flex items-start gap-3',
-                                selectedCompetitors.has(c.name)
-                                  ? 'border-primary bg-primary/5'
-                                  : 'border-border hover:border-primary/40'
-                              )}
-                            >
-                              <div className={cn(
-                                'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors',
-                                selectedCompetitors.has(c.name) ? 'border-primary bg-primary' : 'border-border'
-                              )}>
-                                {selectedCompetitors.has(c.name) && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium text-sm">{c.name}</span>
-                                  {c.website && (
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <Globe className="w-3 h-3" />{c.website}
-                                    </span>
+                          {list.map(c => {
+                            const isSelected = selectedCompetitors.has(c.name);
+                            const currentProduct = productOverrides[c.name] ?? c.product;
+                            const isEditing = editingProduct === c.name;
+                            return (
+                              <div
+                                key={c.name}
+                                className={cn(
+                                  'rounded-lg border transition-all',
+                                  isSelected ? 'border-primary bg-primary/5' : 'border-border'
+                                )}
+                              >
+                                {/* Company row — clickable to toggle */}
+                                <button
+                                  onClick={() => toggleCompetitor(c.name)}
+                                  className="w-full text-left p-3 flex items-start gap-3"
+                                >
+                                  <div className={cn(
+                                    'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors',
+                                    isSelected ? 'border-primary bg-primary' : 'border-border'
+                                  )}>
+                                    {isSelected && <Check className="w-3 h-3 text-white" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                      <span className="font-semibold text-sm">{c.name}</span>
+                                      {c.website && (
+                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                          <Globe className="w-3 h-3" />{c.website}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5 ml-5">{c.description}</p>
+                                  </div>
+                                </button>
+
+                                {/* Product sub-row */}
+                                <div className={cn(
+                                  'flex items-center gap-2 px-3 pb-3 ml-8',
+                                  !isSelected && 'opacity-50'
+                                )}>
+                                  <Package className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                  {isEditing ? (
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <Input
+                                        className="h-7 text-xs py-0 flex-1"
+                                        value={editingProductValue}
+                                        onChange={e => setEditingProductValue(e.target.value)}
+                                        onKeyDown={e => {
+                                          if (e.key === 'Enter') saveEditProduct(c.name);
+                                          if (e.key === 'Escape') setEditingProduct(null);
+                                        }}
+                                        autoFocus
+                                      />
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-xs px-2 intel-gradient text-white border-0"
+                                        onClick={() => saveEditProduct(c.name)}
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2 flex-1">
+                                      <span className="text-xs font-medium text-foreground">{currentProduct}</span>
+                                      {productOverrides[c.name] && (
+                                        <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">edited</span>
+                                      )}
+                                      <button
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          startEditProduct(c.name, c.product);
+                                        }}
+                                        className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                        title="Edit competing product"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                        <span>Edit product</span>
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>
                               </div>
-                            </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -316,17 +395,25 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   {/* Custom competitor input */}
                   <div className="pt-2 border-t border-border">
                     <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">➕ Add Custom</p>
-                    <div className="flex gap-2">
+                    <div className="space-y-2">
                       <Input
-                        placeholder="Competitor name or website"
-                        value={customCompetitor}
-                        onChange={e => setCustomCompetitor(e.target.value)}
+                        placeholder="Company name"
+                        value={customCompetitorName}
+                        onChange={e => setCustomCompetitorName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addCustomCompetitor()}
-                        className="flex-1"
                       />
-                      <Button type="button" variant="outline" onClick={addCustomCompetitor} size="sm">
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Competing product name (optional)"
+                          value={customCompetitorProduct}
+                          onChange={e => setCustomCompetitorProduct(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && addCustomCompetitor()}
+                          className="flex-1"
+                        />
+                        <Button type="button" variant="outline" onClick={addCustomCompetitor} size="sm">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
