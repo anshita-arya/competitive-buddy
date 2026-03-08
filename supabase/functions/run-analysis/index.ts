@@ -150,7 +150,7 @@ async function analyzeWithAI(
                 },
                 recommendations: {
                   type: 'string',
-                  description: '5-7 specific, actionable strategic recommendations for the user company',
+                  description: 'Strategic recommendations using markdown. Use ## for section headers (e.g. ## Immediate Actions, ## Product Gaps to Close, ## Messaging & Positioning, ## Watch List). Under each section use numbered lists "1. " with **bold** action verbs. Be specific and actionable.',
                 },
               },
               required: ['executive_summary', 'analysis_items', 'recommendations'],
