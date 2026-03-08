@@ -131,7 +131,7 @@ async function analyzeWithAI(
               properties: {
                 executive_summary: {
                   type: 'string',
-                  description: '3-5 paragraph executive summary covering market dynamics, key threats and opportunities',
+                  description: 'A structured executive summary using markdown formatting. Use ## for section headers (e.g. ## Market Overview, ## Key Threats, ## Opportunities, ## Our Position). Under each section use bullet points starting with "- " to list 3-5 concise points. Use **bold** for company names, product names, and key metrics. Do NOT write plain paragraphs — every section must have bullet points.',
                 },
                 analysis_items: {
                   type: 'array',
@@ -150,7 +150,7 @@ async function analyzeWithAI(
                 },
                 recommendations: {
                   type: 'string',
-                  description: '5-7 specific, actionable strategic recommendations for the user company',
+                  description: 'Strategic recommendations using markdown. Use ## for section headers (e.g. ## Immediate Actions, ## Product Gaps to Close, ## Messaging & Positioning, ## Watch List). Under each section use numbered lists "1. " with **bold** action verbs. Be specific and actionable.',
                 },
               },
               required: ['executive_summary', 'analysis_items', 'recommendations'],

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,21 +38,85 @@ function ScoreBadge({ score }: { score: number | null }) {
   );
 }
 
-function MarkdownText({ text }: { text: string }) {
-  // Simple markdown-like rendering for the output
-  const paragraphs = text.split('\n').filter(p => p.trim());
-  return (
-    <div className="space-y-2 text-sm leading-relaxed text-foreground">
-      {paragraphs.map((p, i) => {
-        if (p.startsWith('## ')) return <h3 key={i} className="font-bold text-base mt-4">{p.slice(3)}</h3>;
-        if (p.startsWith('# ')) return <h2 key={i} className="font-bold text-lg mt-4">{p.slice(2)}</h2>;
-        if (p.startsWith('- ') || p.startsWith('• ')) return <li key={i} className="ml-4 list-disc">{p.slice(2)}</li>;
-        if (p.match(/^\d+\.\s/)) return <li key={i} className="ml-4 list-decimal">{p.replace(/^\d+\.\s/, '')}</li>;
-        if (p.startsWith('**') && p.endsWith('**')) return <p key={i} className="font-semibold">{p.slice(2, -2)}</p>;
-        return <p key={i}>{p}</p>;
-      })}
-    </div>
+function renderInline(text: string) {
+  // Render **bold** inline
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>
   );
+}
+
+function MarkdownText({ text }: { text: string }) {
+  const lines = text.split('\n');
+
+  // Group bullet lines into <ul> blocks
+  const elements: React.ReactNode[] = [];
+  let bulletBuffer: string[] = [];
+
+  const flushBullets = (key: string) => {
+    if (bulletBuffer.length) {
+      elements.push(
+        <ul key={key} className="space-y-1.5 my-2 ml-1">
+          {bulletBuffer.map((b, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-foreground/90">
+              <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+              <span>{renderInline(b)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      bulletBuffer = [];
+    }
+  };
+
+  lines.forEach((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      flushBullets(`bullet-${i}`);
+      return;
+    }
+    if (trimmed.startsWith('### ')) {
+      flushBullets(`bullet-${i}`);
+      elements.push(
+        <h4 key={i} className="font-bold text-sm uppercase tracking-wider text-primary mt-5 mb-1.5 flex items-center gap-2">
+          <span className="w-3 h-0.5 bg-primary rounded-full inline-block" />
+          {trimmed.slice(4)}
+        </h4>
+      );
+    } else if (trimmed.startsWith('## ')) {
+      flushBullets(`bullet-${i}`);
+      elements.push(
+        <h3 key={i} className="font-bold text-base text-foreground mt-6 mb-2 border-b border-border/40 pb-1">{trimmed.slice(3)}</h3>
+      );
+    } else if (trimmed.startsWith('# ')) {
+      flushBullets(`bullet-${i}`);
+      elements.push(
+        <h2 key={i} className="font-bold text-lg text-foreground mt-4 mb-2">{trimmed.slice(2)}</h2>
+      );
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('• ')) {
+      bulletBuffer.push(trimmed.slice(2));
+    } else if (trimmed.match(/^\d+\.\s/)) {
+      flushBullets(`bullet-${i}`);
+      elements.push(
+        <div key={i} className="flex items-start gap-2.5 text-sm leading-relaxed text-foreground/90 my-1">
+          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">
+            {trimmed.match(/^(\d+)\./)?.[1]}
+          </span>
+          <span>{renderInline(trimmed.replace(/^\d+\.\s/, ''))}</span>
+        </div>
+      );
+    } else {
+      flushBullets(`bullet-${i}`);
+      elements.push(
+        <p key={i} className="text-sm leading-relaxed text-foreground/90">{renderInline(trimmed)}</p>
+      );
+    }
+  });
+  flushBullets('bullet-end');
+
+  return <div className="space-y-1">{elements}</div>;
 }
 
 export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
