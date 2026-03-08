@@ -23,7 +23,7 @@ const Index = () => {
             </div>
             <div>
               <span className="font-bold text-lg tracking-tight intel-gradient-text">Competitive Buddy</span>
-              <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">by HPE</span>
+              <span className="text-xs text-muted-foreground ml-2 hidden sm:inline">your compass in the outside world</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
