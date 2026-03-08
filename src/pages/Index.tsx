@@ -3,7 +3,8 @@ import OnboardingFlow from '@/components/OnboardingFlow';
 import AnalysisResults from '@/components/AnalysisResults';
 import HistorySidebar from '@/components/HistorySidebar';
 import { Button } from '@/components/ui/button';
-import { BarChart3, History, Plus, Zap } from 'lucide-react';
+import { History, Plus, Zap, Linkedin } from 'lucide-react';
+import anshitaAvatar from '@/assets/anshita-avatar.png';
 
 export type AppView = 'onboarding' | 'results';
 
@@ -71,6 +72,28 @@ const Index = () => {
           ) : null}
         </main>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 bg-background/80 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-3">
+          <span className="text-sm text-muted-foreground">Created by</span>
+          <img
+            src={anshitaAvatar}
+            alt="Anshita"
+            className="w-7 h-7 rounded-full object-cover ring-2 ring-primary/30"
+          />
+          <span className="text-sm font-medium text-foreground">Anshita</span>
+          <a
+            href="https://www.linkedin.com/in/anshitaarya/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+          >
+            <Linkedin className="w-4 h-4" />
+            Connect
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };
