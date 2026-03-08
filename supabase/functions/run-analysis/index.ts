@@ -58,6 +58,19 @@ function classifyRole(userRole: string): 'internal' | 'outbound' {
   return outboundKeywords.some(k => role.includes(k)) ? 'outbound' : 'internal';
 }
 
+interface AnalysisItem {
+  competitor: string;
+  category: string;
+  summary: string;
+  score: number;
+}
+
+interface AIAnalysisResult {
+  executive_summary: string;
+  analysis_items: AnalysisItem[];
+  recommendations: string;
+}
+
 async function analyzeWithAI(
   userProduct: string,
   userCompany: string,
@@ -65,7 +78,7 @@ async function analyzeWithAI(
   competitors: Array<{ name: string; website: string; type: string }>,
   categories: string[],
   scrapedData: Record<string, Record<string, string>>
-): Promise<{ executive_summary: string; competitor_analysis: Record<string, Record<string, { summary: string; score: number }>>; recommendations: string }> {
+): Promise<AIAnalysisResult> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
@@ -87,6 +100,11 @@ async function analyzeWithAI(
     return `### ${c.name} (${c.type})\nWebsite: ${c.website}\n${catData}`;
   }).join('\n\n');
 
+  // Build explicit list of all competitor×category pairs the AI must fill in
+  const pairsDescription = competitors.flatMap(c =>
+    categories.map(cat => `{ "competitor": "${c.name}", "category": "${cat}", "summary": "...", "score": N }`)
+  ).join(',\n');
+
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -94,14 +112,12 @@ async function analyzeWithAI(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      model: 'openai/gpt-5-mini',
       messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
+        { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\nRole: ${userRole}\n\nCompetitor data:\n${context}\n\nCategories to analyze: ${categories.join(', ')}\n\nProvide comprehensive competitive analysis including executive summary, per-competitor per-category analysis with scores (1-10), and strategic recommendations.${userPromptSuffix}`,
+          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\nRole: ${userRole}\n\nCompetitor data:\n${context}\n\nYou MUST produce exactly one analysis_item for EVERY competitor×category combination listed below (${competitors.length * categories.length} items total):\n${pairsDescription}\n\nUse exactly the competitor and category strings as given. Score 1-10 where 10 = highest threat/strength. Provide comprehensive executive summary and strategic recommendations.${userPromptSuffix}`,
         },
       ],
       tools: [
@@ -109,30 +125,35 @@ async function analyzeWithAI(
           type: 'function',
           function: {
             name: 'analyze_competitors',
-            description: 'Return structured competitive analysis',
+            description: 'Return structured competitive analysis with a flat array of per-competitor per-category items',
             parameters: {
               type: 'object',
               properties: {
-                executive_summary: { type: 'string', description: '3-5 paragraph executive summary covering market dynamics, key threats and opportunities' },
-                competitor_analysis: {
-                  type: 'object',
-                  description: 'Nested object: competitor_name -> category -> { summary, score }',
-                  additionalProperties: {
+                executive_summary: {
+                  type: 'string',
+                  description: '3-5 paragraph executive summary covering market dynamics, key threats and opportunities',
+                },
+                analysis_items: {
+                  type: 'array',
+                  description: 'Flat array — one entry per competitor per category',
+                  items: {
                     type: 'object',
-                    additionalProperties: {
-                      type: 'object',
-                      properties: {
-                        summary: { type: 'string' },
-                        score: { type: 'number' },
-                      },
-                      required: ['summary', 'score'],
-                      additionalProperties: false,
+                    properties: {
+                      competitor: { type: 'string', description: 'Exact competitor name as provided' },
+                      category: { type: 'string', description: 'Exact category name as provided' },
+                      summary: { type: 'string', description: '2-4 sentence analysis for this competitor in this category' },
+                      score: { type: 'number', description: 'Threat/strength score 1-10' },
                     },
+                    required: ['competitor', 'category', 'summary', 'score'],
+                    additionalProperties: false,
                   },
                 },
-                recommendations: { type: 'string', description: '5-7 specific, actionable strategic recommendations for the user company' },
+                recommendations: {
+                  type: 'string',
+                  description: '5-7 specific, actionable strategic recommendations for the user company',
+                },
               },
-              required: ['executive_summary', 'competitor_analysis', 'recommendations'],
+              required: ['executive_summary', 'analysis_items', 'recommendations'],
               additionalProperties: false,
             },
           },
@@ -150,9 +171,12 @@ async function analyzeWithAI(
 
   const data = await response.json();
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall) throw new Error('No tool call response from AI');
+  if (!toolCall) {
+    console.error('No tool call. Full response:', JSON.stringify(data));
+    throw new Error('No tool call response from AI');
+  }
 
-  return JSON.parse(toolCall.function.arguments);
+  return JSON.parse(toolCall.function.arguments) as AIAnalysisResult;
 }
 
 Deno.serve(async (req) => {
