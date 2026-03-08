@@ -3,7 +3,8 @@ import OnboardingFlow from '@/components/OnboardingFlow';
 import AnalysisResults from '@/components/AnalysisResults';
 import HistorySidebar from '@/components/HistorySidebar';
 import { Button } from '@/components/ui/button';
-import { BarChart3, History, Plus, Zap } from 'lucide-react';
+import { History, Plus, Zap, Linkedin } from 'lucide-react';
+import anshitaAvatar from '@/assets/anshita-avatar.png';
 
 export type AppView = 'onboarding' | 'results';
 
