@@ -1,0 +1,1 @@
+DELETE FROM competitor_data WHERE analysis_id = '62ff0135-bd12-4669-85d0-ff9dddfaf5fa'; UPDATE analyses SET status = 'pending' WHERE id = '62ff0135-bd12-4669-85d0-ff9dddfaf5fa';
