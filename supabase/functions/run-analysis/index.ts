@@ -206,18 +206,34 @@ Deno.serve(async (req) => {
       scrapedData
     );
 
-    // Store competitor_data rows
+    // Store competitor_data rows — use fuzzy key matching to handle AI returning slightly different casing/whitespace
+    function findKey(obj: Record<string, unknown>, target: string): string | undefined {
+      if (!obj) return undefined;
+      const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normTarget = norm(target);
+      return Object.keys(obj).find(k => norm(k) === normTarget) ?? Object.keys(obj).find(k => norm(k).includes(normTarget) || normTarget.includes(norm(k)));
+    }
+
     const dataRows = [];
     for (const comp of competitors) {
+      const compKey = findKey(aiResult.competitor_analysis as Record<string, unknown>, comp.name);
+      const compData = compKey ? (aiResult.competitor_analysis as Record<string, Record<string, { summary: string; score: number }>>)[compKey] : null;
+
+      console.log(`Competitor "${comp.name}" -> AI key "${compKey}". Categories in AI response: ${compData ? Object.keys(compData).join(', ') : 'NONE'}`);
+
       for (const cat of categoryNames) {
-        const catAnalysis = aiResult.competitor_analysis?.[comp.name]?.[cat];
+        const catKey = compData ? findKey(compData as Record<string, unknown>, cat) : undefined;
+        const catAnalysis = catKey ? compData![catKey] : undefined;
+
+        console.log(`  Category "${cat}" -> AI key "${catKey}" -> score: ${catAnalysis?.score ?? 'NULL'}`);
+
         dataRows.push({
           analysis_id,
           competitor_id: comp.id,
           category: cat,
           scraped_content: scrapedData[comp.name]?.[cat] || null,
           ai_summary: catAnalysis?.summary || null,
-          score: catAnalysis?.score || null,
+          score: catAnalysis?.score ?? null,
         });
       }
     }
