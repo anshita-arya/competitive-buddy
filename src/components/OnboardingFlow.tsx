@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, ArrowRight, Plus, Check, Globe, Zap, Building2, User, Layers, Pencil, Package, ChevronDown } from 'lucide-react';
@@ -240,16 +241,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <CardContent>
               <form onSubmit={handleProfileSubmit} className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="product">Product Name</Label>
-                  <Input
-                    id="product"
-                    placeholder="e.g. Notion, Slack, Figma"
-                    value={product}
-                    onChange={e => setProduct(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="company">Company</Label>
                   <Input
                     id="company"
@@ -260,16 +251,35 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Your Role</Label>
+                  <Label htmlFor="product">Product Name</Label>
                   <Input
-                    id="role"
-                    placeholder="e.g. Product Manager, Founder, CMO"
-                    value={role}
-                    onChange={e => setRole(e.target.value)}
+                    id="product"
+                    placeholder="e.g. Notion, Slack, Figma"
+                    value={product}
+                    onChange={e => setProduct(e.target.value)}
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full gap-2 intel-gradient text-white border-0" size="lg">
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={role} onValueChange={setRole} required>
+                    <SelectTrigger id="role">
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Product Manager">Product Manager</SelectItem>
+                      <SelectItem value="Founder / CEO">Founder / CEO</SelectItem>
+                      <SelectItem value="CMO / Marketing">CMO / Marketing</SelectItem>
+                      <SelectItem value="Sales">Sales</SelectItem>
+                      <SelectItem value="Business Development">Business Development</SelectItem>
+                      <SelectItem value="Strategy / Corporate Development">Strategy / Corporate Development</SelectItem>
+                      <SelectItem value="Analyst">Analyst</SelectItem>
+                      <SelectItem value="Engineer / Technical Lead">Engineer / Technical Lead</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" disabled={!role} className="w-full gap-2 intel-gradient text-white border-0" size="lg">
                   Find Competitors <ArrowRight className="w-4 h-4" />
                 </Button>
               </form>
