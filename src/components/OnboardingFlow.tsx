@@ -51,6 +51,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   // Track which competitor is being edited
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [editingProductValue, setEditingProductValue] = useState('');
+  // Track which competitor cards are expanded (showing details)
+  const [expandedCompetitors, setExpandedCompetitors] = useState<Set<string>>(new Set());
 
   const [customCompetitorName, setCustomCompetitorName] = useState('');
   const [customCompetitorProduct, setCustomCompetitorProduct] = useState('');
