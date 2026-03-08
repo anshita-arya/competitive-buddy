@@ -307,6 +307,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             const isSelected = selectedCompetitors.has(c.name);
                             const currentProduct = productOverrides[c.name] ?? c.product;
                             const isEditing = editingProduct === c.name;
+                            const isExpanded = expandedCompetitors.has(c.name);
                             return (
                               <div
                                 key={c.name}
@@ -315,77 +316,104 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                                   isSelected ? 'border-primary bg-primary/5' : 'border-border'
                                 )}
                               >
-                                {/* Company row — clickable to toggle */}
-                                <button
-                                  onClick={() => toggleCompetitor(c.name)}
-                                  className="w-full text-left p-3 flex items-start gap-3"
-                                >
-                                  <div className={cn(
-                                    'w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors',
-                                    isSelected ? 'border-primary bg-primary' : 'border-border'
-                                  )}>
+                                {/* Main row: checkbox + Company – Product + expand toggle */}
+                                <div className="flex items-center gap-3 p-3">
+                                  <button
+                                    onClick={() => toggleCompetitor(c.name)}
+                                    className={cn(
+                                      'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+                                      isSelected ? 'border-primary bg-primary' : 'border-border'
+                                    )}
+                                  >
                                     {isSelected && <Check className="w-3 h-3 text-white" />}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                                      <span className="font-semibold text-sm">{c.name}</span>
-                                      {c.website && (
-                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                          <Globe className="w-3 h-3" />{c.website}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-0.5 ml-5">{c.description}</p>
-                                  </div>
-                                </button>
+                                  </button>
 
-                                {/* Product sub-row */}
-                                <div className={cn(
-                                  'flex items-center gap-2 px-3 pb-3 ml-8',
-                                  !isSelected && 'opacity-50'
-                                )}>
-                                  <Package className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                                  {isEditing ? (
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <Input
-                                        className="h-7 text-xs py-0 flex-1"
-                                        value={editingProductValue}
-                                        onChange={e => setEditingProductValue(e.target.value)}
-                                        onKeyDown={e => {
-                                          if (e.key === 'Enter') saveEditProduct(c.name);
-                                          if (e.key === 'Escape') setEditingProduct(null);
-                                        }}
-                                        autoFocus
-                                      />
-                                      <Button
-                                        size="sm"
-                                        className="h-7 text-xs px-2 intel-gradient text-white border-0"
-                                        onClick={() => saveEditProduct(c.name)}
-                                      >
-                                        <Check className="w-3 h-3" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-2 flex-1">
-                                      <span className="text-xs font-medium text-foreground">{currentProduct}</span>
-                                      {productOverrides[c.name] && (
-                                        <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">edited</span>
-                                      )}
+                                  {/* Company + product inline */}
+                                  <button
+                                    onClick={() => toggleCompetitor(c.name)}
+                                    className="flex-1 text-left flex items-center gap-2 min-w-0"
+                                  >
+                                    <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                    <span className="font-semibold text-sm truncate">{c.name}</span>
+                                    <span className="text-muted-foreground text-sm flex-shrink-0">—</span>
+                                    {isEditing ? null : (
+                                      <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full truncate flex items-center gap-1">
+                                        <Package className="w-3 h-3 flex-shrink-0" />
+                                        {currentProduct}
+                                        {productOverrides[c.name] && (
+                                          <span className="text-primary/60 ml-1">✎</span>
+                                        )}
+                                      </span>
+                                    )}
+                                  </button>
+
+                                  {/* Edit product & expand buttons */}
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {!isEditing && (
                                       <button
-                                        onClick={e => {
-                                          e.stopPropagation();
-                                          startEditProduct(c.name, c.product);
-                                        }}
-                                        className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                                        onClick={e => { e.stopPropagation(); startEditProduct(c.name, c.product); }}
+                                        className="p-1 rounded text-muted-foreground hover:text-primary transition-colors"
                                         title="Edit competing product"
                                       >
-                                        <Pencil className="w-3 h-3" />
-                                        <span>Edit product</span>
+                                        <Pencil className="w-3.5 h-3.5" />
                                       </button>
-                                    </div>
-                                  )}
+                                    )}
+                                    <button
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        setExpandedCompetitors(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(c.name)) next.delete(c.name);
+                                          else next.add(c.name);
+                                          return next;
+                                        });
+                                      }}
+                                      className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors"
+                                      title="Show details"
+                                    >
+                                      <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')} />
+                                    </button>
+                                  </div>
                                 </div>
+
+                                {/* Inline product edit input */}
+                                {isEditing && (
+                                  <div className="flex items-center gap-2 px-3 pb-3 ml-8">
+                                    <Package className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                                    <Input
+                                      className="h-7 text-xs py-0 flex-1"
+                                      value={editingProductValue}
+                                      onChange={e => setEditingProductValue(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') saveEditProduct(c.name);
+                                        if (e.key === 'Escape') setEditingProduct(null);
+                                      }}
+                                      autoFocus
+                                    />
+                                    <Button
+                                      size="sm"
+                                      className="h-7 text-xs px-2 intel-gradient text-white border-0"
+                                      onClick={() => saveEditProduct(c.name)}
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {/* Expandable details: URL + description */}
+                                {isExpanded && (
+                                  <div className="px-3 pb-3 ml-8 space-y-1 border-t border-border/50 pt-2 mt-1">
+                                    {c.website && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Globe className="w-3 h-3 flex-shrink-0" />
+                                        <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-primary underline-offset-2 hover:underline truncate">{c.website}</a>
+                                      </p>
+                                    )}
+                                    {c.description && (
+                                      <p className="text-xs text-muted-foreground">{c.description}</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
