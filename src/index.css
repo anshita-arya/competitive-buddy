@@ -10,59 +10,65 @@
 
 @layer base {
   :root {
-    --background: 240 4% 95%;
-    --foreground: 240 5% 10%;
+    /* HPE Light Mode */
+    --background: 210 20% 97%;
+    --foreground: 213 27% 13%;
 
-    --card: 0 0% 98%;
-    --card-foreground: 240 5% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 213 27% 13%;
 
-    --popover: 240 5% 90%;
-    --popover-foreground: 240 5% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 27% 13%;
 
-    --primary: 333 71% 50%;
-    --primary-foreground: 327 73% 97%;
+    /* HPE Green #01A982 */
+    --primary: 165 98% 33%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 33%;
-    --secondary-foreground: 0 0% 98%;
+    /* HPE Dark Navy */
+    --secondary: 213 27% 25%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 240 4% 83%;
-    --muted-foreground: 240 5% 10%;
+    --muted: 210 15% 90%;
+    --muted-foreground: 213 15% 45%;
 
-    --accent: 355 100% 97%;
-    --accent-foreground: 349 89% 60%;
+    /* HPE Green tint for accents */
+    --accent: 165 80% 92%;
+    --accent-foreground: 165 98% 25%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
 
-    --border: 240 4% 83%;
-    --input: 240 4% 83%;
-    --ring: 333 71% 50%;
+    --border: 210 15% 85%;
+    --input: 210 15% 85%;
+    /* HPE Green ring */
+    --ring: 165 98% 33%;
 
-    --radius: 1.5rem;
+    --radius: 0.5rem;
 
-    /* Custom tokens */
-    --intel-blue: 231 70% 50%;
-    --intel-purple: 265 70% 55%;
-    --intel-emerald: 160 60% 40%;
-    --intel-amber: 38 92% 50%;
-    --intel-rose: 350 80% 55%;
-    --intel-surface: 220 30% 98%;
-    --intel-gradient: linear-gradient(135deg, hsl(231 70% 50%), hsl(265 70% 55%));
+    /* HPE brand tokens */
+    --hpe-green: 165 98% 33%;
+    --hpe-dark-green: 165 98% 25%;
+    --hpe-purple: 265 82% 55%;
+    --hpe-orange: 31 100% 50%;
+    --hpe-blue: 199 100% 31%;
+    --hpe-navy: 213 27% 13%;
+    --hpe-surface: 210 20% 97%;
+    --intel-gradient: linear-gradient(135deg, hsl(165 98% 33%), hsl(199 100% 31%));
 
-    --sidebar-background: 224 30% 10%;
-    --sidebar-foreground: 240 5% 10%;
-    --sidebar-primary: 333 71% 50%;
-    --sidebar-primary-foreground: 327 73% 97%;
-    --sidebar-accent: 240 5% 33%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 83%;
-    --sidebar-ring: 333 71% 50%;
-    --chart-1: 328 85% 70%;
-    --chart-2: 351 94% 71%;
-    --chart-3: 327 87% 81%;
-    --chart-4: 352 95% 81%;
-    --chart-5: 240 3% 46%;
-    --sidebar: 0 0% 98%;
+    --sidebar-background: 213 27% 13%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 165 98% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 213 27% 20%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 213 27% 20%;
+    --sidebar-ring: 165 98% 33%;
+    --chart-1: 165 98% 33%;
+    --chart-2: 199 100% 38%;
+    --chart-3: 265 82% 55%;
+    --chart-4: 31 100% 50%;
+    --chart-5: 213 15% 55%;
+    --sidebar: 0 0% 100%;
     --font-sans: 'Poppins', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
     --font-serif: 'Merriweather', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
