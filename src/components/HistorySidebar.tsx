@@ -22,13 +22,23 @@ export default function HistorySidebar({ onSelect, onClose }: HistorySidebarProp
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const localIds = JSON.parse(localStorage.getItem('cb_analysis_ids') || '[]') as string[];
+    if (localIds.length === 0) {
+      setLoading(false);
+      return;
+    }
     supabase
       .from('analyses')
       .select('id, user_product, user_company, status, created_at')
+      .in('id', localIds)
       .order('created_at', { ascending: false })
-      .limit(20)
+      .limit(50)
       .then(({ data }) => {
-        setAnalyses((data as AnalysisItem[]) || []);
+        // preserve localStorage order
+        const sorted = (data as AnalysisItem[] || []).sort(
+          (a, b) => localIds.indexOf(a.id) - localIds.indexOf(b.id)
+        );
+        setAnalyses(sorted);
         setLoading(false);
       });
   }, []);
