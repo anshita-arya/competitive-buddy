@@ -23,6 +23,7 @@ export type Database = {
           status: string
           updated_at: string
           user_company: string
+          user_id: string | null
           user_product: string
           user_role: string
         }
@@ -34,6 +35,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_company: string
+          user_id?: string | null
           user_product: string
           user_role: string
         }
@@ -45,6 +47,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_company?: string
+          user_id?: string | null
           user_product?: string
           user_role?: string
         }
@@ -161,6 +164,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {
