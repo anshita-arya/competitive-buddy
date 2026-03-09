@@ -168,6 +168,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         user_role: role,
         user_company: company,
         status: 'pending',
+        user_id: user?.id ?? null,
       }).select().single();
       if (aErr || !analysis) throw new Error(aErr?.message || 'Failed to create analysis');
 
