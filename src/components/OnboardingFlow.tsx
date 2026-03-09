@@ -38,6 +38,7 @@ const STEPS = [
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>('profile');
 
   // Profile
