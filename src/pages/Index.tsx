@@ -13,6 +13,13 @@ const Index = () => {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
+  function saveToLocalHistory(id: string) {
+    const existing = JSON.parse(localStorage.getItem('cb_analysis_ids') || '[]') as string[];
+    if (!existing.includes(id)) {
+      localStorage.setItem('cb_analysis_ids', JSON.stringify([id, ...existing].slice(0, 50)));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
