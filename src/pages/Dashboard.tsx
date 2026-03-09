@@ -143,9 +143,9 @@ export default function Dashboard({ onNewAnalysis, onSelectAnalysis }: Dashboard
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn(
                       'text-xs px-1.5 py-0.5 rounded-full font-medium',
-                      a.status === 'completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' :
-                      a.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400' :
-                      'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'
+                      a.status === 'completed' ? 'bg-primary/10 text-primary' :
+                      a.status === 'failed' ? 'bg-destructive/10 text-destructive' :
+                      'bg-secondary/30 text-secondary-foreground'
                     )}>
                       {a.status}
                     </span>
