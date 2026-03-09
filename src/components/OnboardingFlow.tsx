@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ const STEPS = [
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [step, setStep] = useState<Step>('profile');
 
   // Profile
@@ -166,6 +168,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         user_role: role,
         user_company: company,
         status: 'pending',
+        user_id: user?.id ?? null,
       }).select().single();
       if (aErr || !analysis) throw new Error(aErr?.message || 'Failed to create analysis');
 
