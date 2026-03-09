@@ -71,8 +71,8 @@ const Index = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           {view === 'onboarding' ? (
-            <OnboardingFlow
-              onComplete={(id) => { setAnalysisId(id); setView('results'); }}
+          <OnboardingFlow
+              onComplete={(id) => { saveToLocalHistory(id); setAnalysisId(id); setView('results'); }}
             />
           ) : analysisId ? (
             <AnalysisResults analysisId={analysisId} />
