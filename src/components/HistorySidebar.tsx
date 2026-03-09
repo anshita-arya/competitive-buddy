@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { X, BarChart3, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -18,30 +19,23 @@ interface AnalysisItem {
 }
 
 export default function HistorySidebar({ onSelect, onClose }: HistorySidebarProps) {
+  const { user } = useAuth();
   const [analyses, setAnalyses] = useState<AnalysisItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const localIds = JSON.parse(localStorage.getItem('cb_analysis_ids') || '[]') as string[];
-    if (localIds.length === 0) {
-      setLoading(false);
-      return;
-    }
+    if (!user) { setLoading(false); return; }
     supabase
       .from('analyses')
       .select('id, user_product, user_company, status, created_at')
-      .in('id', localIds)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data }) => {
-        // preserve localStorage order
-        const sorted = (data as AnalysisItem[] || []).sort(
-          (a, b) => localIds.indexOf(a.id) - localIds.indexOf(b.id)
-        );
-        setAnalyses(sorted);
+        setAnalyses((data as AnalysisItem[]) || []);
         setLoading(false);
       });
-  }, []);
+  }, [user]);
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -80,9 +74,9 @@ export default function HistorySidebar({ onSelect, onClose }: HistorySidebarProp
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn(
                       'text-xs px-1.5 py-0.5 rounded-full',
-                      a.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
-                      a.status === 'failed' ? 'bg-red-50 text-red-600' :
-                      'bg-amber-50 text-amber-600'
+                      a.status === 'completed' ? 'bg-primary/10 text-primary' :
+                      a.status === 'failed' ? 'bg-destructive/10 text-destructive' :
+                      'bg-secondary/20 text-secondary-foreground'
                     )}>
                       {a.status}
                     </span>
