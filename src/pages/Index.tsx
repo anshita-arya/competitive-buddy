@@ -13,6 +13,13 @@ const Index = () => {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
+  function saveToLocalHistory(id: string) {
+    const existing = JSON.parse(localStorage.getItem('cb_analysis_ids') || '[]') as string[];
+    if (!existing.includes(id)) {
+      localStorage.setItem('cb_analysis_ids', JSON.stringify([id, ...existing].slice(0, 50)));
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
@@ -64,8 +71,8 @@ const Index = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-auto">
           {view === 'onboarding' ? (
-            <OnboardingFlow
-              onComplete={(id) => { setAnalysisId(id); setView('results'); }}
+          <OnboardingFlow
+              onComplete={(id) => { saveToLocalHistory(id); setAnalysisId(id); setView('results'); }}
             />
           ) : analysisId ? (
             <AnalysisResults analysisId={analysisId} />
