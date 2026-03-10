@@ -104,7 +104,7 @@ const Index = () => {
                 onClick={() => setView('dashboard')}
                 className="gap-2"
               >
-                <Plus className="w-4 h-4 rotate-0" />
+                <LayoutDashboard className="w-4 h-4" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Button>
             )}
