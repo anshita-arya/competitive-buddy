@@ -6,7 +6,7 @@ import OnboardingFlow from '@/components/OnboardingFlow';
 import AnalysisResults from '@/components/AnalysisResults';
 import HistorySidebar from '@/components/HistorySidebar';
 import { Button } from '@/components/ui/button';
-import { History, Plus, Zap, Linkedin, LogOut, Loader2 } from 'lucide-react';
+import { History, Plus, Zap, Linkedin, LogOut, Loader2, LayoutDashboard } from 'lucide-react';
 import anshitaAvatar from '@/assets/anshita-avatar.png';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,7 +21,7 @@ import {
 export type AppView = 'dashboard' | 'onboarding' | 'results';
 
 const Index = () => {
-  const { user, profile, loading, isNewUser, signOut } = useAuth();
+  const { user, profile, loading, isNewUser, signOut, refreshIsNewUser } = useAuth();
   const [view, setView] = useState<AppView | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -36,6 +36,8 @@ const Index = () => {
   async function handleAnalysisComplete(id: string) {
     setAnalysisId(id);
     setView('results');
+    // Refresh so returning users land on dashboard next time
+    await refreshIsNewUser();
   }
 
   // ---- Loading splash ----
@@ -84,6 +86,17 @@ const Index = () => {
                 New Analysis
               </Button>
             )}
+            {effectiveView !== 'onboarding' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHistory(h => !h)}
+                className="gap-2"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">History</span>
+              </Button>
+            )}
             {effectiveView !== 'dashboard' && (
               <Button
                 variant="ghost"
@@ -91,7 +104,7 @@ const Index = () => {
                 onClick={() => setView('dashboard')}
                 className="gap-2"
               >
-                <History className="w-4 h-4" />
+                <LayoutDashboard className="w-4 h-4" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Button>
             )}
