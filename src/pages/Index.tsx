@@ -21,7 +21,7 @@ import {
 export type AppView = 'dashboard' | 'onboarding' | 'results';
 
 const Index = () => {
-  const { user, profile, loading, isNewUser, signOut } = useAuth();
+  const { user, profile, loading, isNewUser, signOut, refreshIsNewUser } = useAuth();
   const [view, setView] = useState<AppView | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
