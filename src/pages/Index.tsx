@@ -86,6 +86,17 @@ const Index = () => {
                 New Analysis
               </Button>
             )}
+            {effectiveView !== 'onboarding' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowHistory(h => !h)}
+                className="gap-2"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">History</span>
+              </Button>
+            )}
             {effectiveView !== 'dashboard' && (
               <Button
                 variant="ghost"
@@ -93,7 +104,7 @@ const Index = () => {
                 onClick={() => setView('dashboard')}
                 className="gap-2"
               >
-                <History className="w-4 h-4" />
+                <Plus className="w-4 h-4 rotate-0" />
                 <span className="hidden sm:inline">Dashboard</span>
               </Button>
             )}
