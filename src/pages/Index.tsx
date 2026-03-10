@@ -6,7 +6,7 @@ import OnboardingFlow from '@/components/OnboardingFlow';
 import AnalysisResults from '@/components/AnalysisResults';
 import HistorySidebar from '@/components/HistorySidebar';
 import { Button } from '@/components/ui/button';
-import { History, Plus, Zap, Linkedin, LogOut, Loader2 } from 'lucide-react';
+import { History, Plus, Zap, Linkedin, LogOut, Loader2, LayoutDashboard } from 'lucide-react';
 import anshitaAvatar from '@/assets/anshita-avatar.png';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
