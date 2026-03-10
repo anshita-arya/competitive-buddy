@@ -36,6 +36,8 @@ const Index = () => {
   async function handleAnalysisComplete(id: string) {
     setAnalysisId(id);
     setView('results');
+    // Refresh so returning users land on dashboard next time
+    await refreshIsNewUser();
   }
 
   // ---- Loading splash ----
