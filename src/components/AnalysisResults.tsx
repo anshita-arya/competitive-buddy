@@ -20,7 +20,9 @@ interface CompetitorData {
 
 interface Competitor {
   id: string;
-  name: string;
+  name: string; // legacy "Company – Product" composite
+  company_name: string | null;
+  product_name: string | null;
   website: string | null;
   type: 'direct' | 'disruptor';
 }
