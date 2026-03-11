@@ -330,16 +330,27 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-semibold text-muted-foreground w-40 sticky left-0 bg-muted/50 z-10">Category</th>
-                      {competitors.map(comp => (
-                        <th key={comp.id} className="text-left p-3 font-semibold min-w-[180px]">
-                          <div className="flex items-center gap-1.5">
-                            {comp.name}
-                            <Badge variant="outline" className={cn('text-xs ml-1', comp.type === 'disruptor' ? 'border-accent/40 text-accent' : 'border-primary/30 text-primary')}>
-                              {comp.type === 'disruptor' ? '⚡' : '⚔️'}
-                            </Badge>
-                          </div>
-                        </th>
-                      ))}
+                      {competitors.map(comp => {
+                        const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
+                        const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
+                        return (
+                          <th key={comp.id} className="text-left p-3 font-semibold min-w-[180px]">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">{companyLabel}</span>
+                                <Badge variant="outline" className={cn('text-xs ml-1', comp.type === 'disruptor' ? 'border-accent/40 text-accent' : 'border-primary/30 text-primary')}>
+                                  {comp.type === 'disruptor' ? '⚡' : '⚔️'}
+                                </Badge>
+                              </div>
+                              {productLabel && (
+                                <span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full w-fit">
+                                  {productLabel}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
