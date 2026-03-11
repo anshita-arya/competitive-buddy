@@ -10,17 +10,16 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
-async function scrapeCompetitor(name: string, website: string, category: string): Promise<string> {
+async function scrapeCompetitor(companyName: string, productName: string, website: string, category: string): Promise<string> {
   const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
   if (!FIRECRAWL_API_KEY) return '';
 
   try {
-    // Use Firecrawl search to find relevant info
     const query = category.toLowerCase().includes('blog') || category.toLowerCase().includes('announcement')
-      ? `${name} blog announcements news 2024 2025`
+      ? `${companyName} ${productName} blog announcements news 2024 2025`
       : category.toLowerCase().includes('changelog') || category.toLowerCase().includes('launch')
-      ? `${name} product launch changelog updates 2024 2025`
-      : `${name} ${category.toLowerCase()}`;
+      ? `${companyName} ${productName} product launch changelog updates 2024 2025`
+      : `${companyName} ${productName} ${category.toLowerCase()}`;
 
     const response = await fetch('https://api.firecrawl.dev/v1/search', {
       method: 'POST',
@@ -41,7 +40,8 @@ async function scrapeCompetitor(name: string, website: string, category: string)
 
     return data.data
       .slice(0, 3)
-      .map((r: { title?: string; url?: string; markdown?: string }) => `[${r.title || ''}](${r.url || ''})\n${r.markdown?.slice(0, 800) || r.title || ''}`)
+      .map((r: { title?: string; url?: string; markdown?: string }) =>
+        `[${r.title || ''}](${r.url || ''})\n${r.markdown?.slice(0, 800) || r.title || ''}`)
       .join('\n\n---\n\n');
   } catch {
     return '';
@@ -59,7 +59,7 @@ function classifyRole(userRole: string): 'internal' | 'outbound' {
 }
 
 interface AnalysisItem {
-  competitor: string;
+  competitor: string; // "CompanyName – ProductName"
   category: string;
   summary: string;
   score: number;
@@ -71,11 +71,23 @@ interface AIAnalysisResult {
   recommendations: string;
 }
 
+// Enriched competitor row joining competitors → products → companies
+interface EnrichedCompetitor {
+  id: string;          // competitors.id
+  product_id: string;
+  company_name: string;
+  product_name: string;
+  website: string | null;
+  type: string;
+  // composite key used in AI prompts
+  display_name: string; // "CompanyName – ProductName"
+}
+
 async function analyzeWithAI(
   userProduct: string,
   userCompany: string,
   userRole: string,
-  competitors: Array<{ name: string; website: string; type: string }>,
+  competitors: EnrichedCompetitor[],
   categories: string[],
   scrapedData: Record<string, Record<string, string>>
 ): Promise<AIAnalysisResult> {
@@ -92,17 +104,17 @@ async function analyzeWithAI(
     ? `\n\nIMPORTANT: This analysis is for a sales/outbound role (${userRole}). Frame every category to highlight ${userCompany}'s strengths first. Show how competitors validate the market but fall short where ${userCompany} excels. Scores should reflect how well competitors serve as a foil — higher scores mean they are a stronger comparison point to highlight ${userCompany}'s advantages.`
     : `\n\nIMPORTANT: This analysis is for an internal/technical role (${userRole}). Provide deep technical insights: feature parity gaps, architectural approaches, technical debt signals, API depth, scalability indicators, and developer experience. Be candid about where competitors excel and where ${userCompany} must improve.`;
 
+  // Build context using display_name (Company – Product) for AI consistency
   const context = competitors.map(c => {
     const catData = categories.map(cat => {
-      const scraped = scrapedData[c.name]?.[cat] || 'No scraped data available';
+      const scraped = scrapedData[c.display_name]?.[cat] || 'No scraped data available';
       return `  ${cat}: ${scraped.slice(0, 500)}`;
     }).join('\n');
-    return `### ${c.name} (${c.type})\nWebsite: ${c.website}\n${catData}`;
+    return `### ${c.display_name}\nCompany: ${c.company_name}\nProduct: ${c.product_name}\nType: ${c.type}\nWebsite: ${c.website || 'N/A'}\n${catData}`;
   }).join('\n\n');
 
-  // Build explicit list of all competitor×category pairs the AI must fill in
   const pairsDescription = competitors.flatMap(c =>
-    categories.map(cat => `{ "competitor": "${c.name}", "category": "${cat}", "summary": "...", "score": N }`)
+    categories.map(cat => `{ "competitor": "${c.display_name}", "category": "${cat}", "summary": "...", "score": N }`)
   ).join(',\n');
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -135,11 +147,11 @@ async function analyzeWithAI(
                 },
                 analysis_items: {
                   type: 'array',
-                  description: 'Flat array — one entry per competitor per category',
+                  description: 'Flat array — one entry per competitor per category. The competitor field must be "CompanyName – ProductName" format.',
                   items: {
                     type: 'object',
                     properties: {
-                      competitor: { type: 'string', description: 'Exact competitor name as provided' },
+                      competitor: { type: 'string', description: 'Exact "CompanyName – ProductName" string as provided' },
                       category: { type: 'string', description: 'Exact category name as provided' },
                       summary: { type: 'string', description: '2-4 sentence analysis for this competitor in this category' },
                       score: { type: 'number', description: 'Threat/strength score 1-10' },
@@ -194,28 +206,43 @@ Deno.serve(async (req) => {
       .single();
     if (aErr || !analysis) throw new Error('Analysis not found');
 
-    // Fetch competitors & categories
-    const [{ data: competitors }, { data: categories }] = await Promise.all([
-      supabase.from('competitors').select('*').eq('analysis_id', analysis_id),
+    // Fetch competitors with joined product+company data
+    // competitors has company_name and product_name columns (denormalized for speed)
+    const [{ data: rawCompetitors }, { data: categories }] = await Promise.all([
+      supabase.from('competitors').select('id, product_id, company_name, product_name, website, type, name').eq('analysis_id', analysis_id),
       supabase.from('categories').select('*').eq('analysis_id', analysis_id),
     ]);
 
-    if (!competitors?.length) throw new Error('No competitors found');
+    if (!rawCompetitors?.length) throw new Error('No competitors found');
     if (!categories?.length) throw new Error('No categories found');
+
+    // Build enriched competitors, falling back to legacy `name` field for old data
+    const competitors: EnrichedCompetitor[] = rawCompetitors.map(c => {
+      const companyName = c.company_name || c.name?.split(' – ')[0] || c.name || 'Unknown';
+      const productName = c.product_name || c.name?.split(' – ')[1] || c.name || 'Unknown';
+      return {
+        id: c.id,
+        product_id: c.product_id,
+        company_name: companyName,
+        product_name: productName,
+        website: c.website,
+        type: c.type,
+        display_name: `${companyName} – ${productName}`,
+      };
+    });
 
     // Update status to running
     await supabase.from('analyses').update({ status: 'running' }).eq('id', analysis_id);
 
     const categoryNames = categories.map(c => c.name);
 
-    // Scrape data for all competitors × categories
+    // Scrape data keyed by display_name
     const scrapedData: Record<string, Record<string, string>> = {};
     for (const comp of competitors) {
-      scrapedData[comp.name] = {};
+      scrapedData[comp.display_name] = {};
       for (const cat of categoryNames) {
-        const scraped = await scrapeCompetitor(comp.name, comp.website || comp.name, cat);
-        scrapedData[comp.name][cat] = scraped;
-        // Small delay to avoid rate limits
+        const scraped = await scrapeCompetitor(comp.company_name, comp.product_name, comp.website || comp.display_name, cat);
+        scrapedData[comp.display_name][cat] = scraped;
         await new Promise(r => setTimeout(r, 300));
       }
     }
@@ -230,10 +257,9 @@ Deno.serve(async (req) => {
       scrapedData
     );
 
-    // Log AI result for debugging
     console.log(`AI returned ${aiResult.analysis_items?.length ?? 0} analysis items`);
 
-    // Build a lookup map from the flat analysis_items array
+    // Build lookup map — key: "normalised_display_name::normalised_category"
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
     const itemMap = new Map<string, { summary: string; score: number }>();
     for (const item of (aiResult.analysis_items || [])) {
@@ -245,14 +271,14 @@ Deno.serve(async (req) => {
     const dataRows = [];
     for (const comp of competitors) {
       for (const cat of categoryNames) {
-        const key = `${norm(comp.name)}::${norm(cat)}`;
+        const key = `${norm(comp.display_name)}::${norm(cat)}`;
         const item = itemMap.get(key);
-        console.log(`  "${comp.name}" × "${cat}" -> key="${key}" -> found=${!!item} score=${item?.score ?? 'NULL'}`);
+        console.log(`  "${comp.display_name}" × "${cat}" -> key="${key}" -> found=${!!item} score=${item?.score ?? 'NULL'}`);
         dataRows.push({
           analysis_id,
           competitor_id: comp.id,
           category: cat,
-          scraped_content: scrapedData[comp.name]?.[cat] || null,
+          scraped_content: scrapedData[comp.display_name]?.[cat] || null,
           ai_summary: item?.summary || null,
           score: item?.score ?? null,
         });
@@ -261,7 +287,6 @@ Deno.serve(async (req) => {
 
     await supabase.from('competitor_data').insert(dataRows);
 
-    // Update analysis with results
     await supabase.from('analyses').update({
       status: 'completed',
       executive_summary: aiResult.executive_summary,
@@ -273,7 +298,6 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error('run-analysis error:', e);
-    // Mark as failed
     try {
       const { analysis_id } = await req.clone().json().catch(() => ({}));
       if (analysis_id) {
