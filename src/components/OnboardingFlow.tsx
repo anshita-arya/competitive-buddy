@@ -174,15 +174,51 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       const allCompetitors = [...suggestedCompetitors, ...customCompetitors];
       const selected = allCompetitors.filter(c => selectedCompetitors.has(c.name));
-      // Use overridden product names where available; store as "Company - Product" for analysis
-      await supabase.from('competitors').insert(
-        selected.map(c => ({
+
+      // Insert each unique company, then each product linked to its company
+      for (const c of selected) {
+        const productName = productOverrides[c.name] ?? c.product;
+
+        // Insert company
+        const { data: companyRow, error: compErr } = await supabase
+          .from('companies')
+          .insert({
+            analysis_id: analysis.id,
+            name: c.name,
+            website: c.website || null,
+            description: c.description || null,
+          })
+          .select()
+          .single();
+        if (compErr || !companyRow) throw new Error(compErr?.message || 'Failed to insert company');
+
+        // Insert product linked to company
+        const { data: productRow, error: prodErr } = await supabase
+          .from('products')
+          .insert({
+            analysis_id: analysis.id,
+            company_id: companyRow.id,
+            name: productName,
+            website: c.website || null,
+            description: c.description || null,
+            type: c.type,
+          })
+          .select()
+          .single();
+        if (prodErr || !productRow) throw new Error(prodErr?.message || 'Failed to insert product');
+
+        // Insert competitor referencing the product
+        await supabase.from('competitors').insert({
           analysis_id: analysis.id,
-          name: `${c.name} – ${productOverrides[c.name] ?? c.product}`,
+          product_id: productRow.id,
+          company_name: c.name,
+          product_name: productName,
+          // Keep legacy name col as "Company – Product" for backward compat
+          name: `${c.name} – ${productName}`,
           website: c.website || null,
           type: c.type,
-        }))
-      );
+        });
+      }
 
       await supabase.from('categories').insert(
         Array.from(selectedCategories).map(name => ({

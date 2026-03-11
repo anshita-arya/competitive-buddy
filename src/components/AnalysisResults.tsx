@@ -20,7 +20,9 @@ interface CompetitorData {
 
 interface Competitor {
   id: string;
-  name: string;
+  name: string; // legacy "Company – Product" composite
+  company_name: string | null;
+  product_name: string | null;
   website: string | null;
   type: 'direct' | 'disruptor';
 }
@@ -265,20 +267,29 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
 
               {/* Competitor overview cards */}
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {competitors.map(comp => {
+              {competitors.map(comp => {
                   const compData = data.filter(d => d.competitor_id === comp.id && d.score);
                   const avgScore = compData.length
                     ? Math.round(compData.reduce((sum, d) => sum + (d.score || 0), 0) / compData.length * 10) / 10
                     : null;
+                  const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
+                  const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
                   return (
                     <div key={comp.id} className={cn(
                       'p-4 rounded-xl border card-hover',
                       comp.type === 'disruptor' ? 'border-accent/30 bg-accent/5' : 'border-border bg-card'
                     )}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm">{comp.name}</span>
+                      <div className="flex items-start justify-between mb-2 gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm truncate">{companyLabel}</p>
+                          {productLabel && (
+                            <p className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded-full inline-block mt-1 truncate max-w-full">
+                              {productLabel}
+                            </p>
+                          )}
+                        </div>
                         <Badge variant="outline" className={cn(
-                          'text-xs',
+                          'text-xs flex-shrink-0',
                           comp.type === 'disruptor' ? 'border-accent/50 text-accent' : 'border-primary/30 text-primary'
                         )}>
                           {comp.type === 'disruptor' ? '⚡ Disruptor' : '⚔️ Direct'}
@@ -319,16 +330,27 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-semibold text-muted-foreground w-40 sticky left-0 bg-muted/50 z-10">Category</th>
-                      {competitors.map(comp => (
-                        <th key={comp.id} className="text-left p-3 font-semibold min-w-[180px]">
-                          <div className="flex items-center gap-1.5">
-                            {comp.name}
-                            <Badge variant="outline" className={cn('text-xs ml-1', comp.type === 'disruptor' ? 'border-accent/40 text-accent' : 'border-primary/30 text-primary')}>
-                              {comp.type === 'disruptor' ? '⚡' : '⚔️'}
-                            </Badge>
-                          </div>
-                        </th>
-                      ))}
+                      {competitors.map(comp => {
+                        const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
+                        const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
+                        return (
+                          <th key={comp.id} className="text-left p-3 font-semibold min-w-[180px]">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">{companyLabel}</span>
+                                <Badge variant="outline" className={cn('text-xs ml-1', comp.type === 'disruptor' ? 'border-accent/40 text-accent' : 'border-primary/30 text-primary')}>
+                                  {comp.type === 'disruptor' ? '⚡' : '⚔️'}
+                                </Badge>
+                              </div>
+                              {productLabel && (
+                                <span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full w-fit">
+                                  {productLabel}
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>

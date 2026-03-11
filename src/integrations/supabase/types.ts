@@ -82,6 +82,41 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          website: string | null
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          website?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_data: {
         Row: {
           ai_summary: string | null
@@ -133,25 +168,34 @@ export type Database = {
       competitors: {
         Row: {
           analysis_id: string
+          company_name: string | null
           created_at: string
           id: string
           name: string
+          product_id: string | null
+          product_name: string | null
           type: string
           website: string | null
         }
         Insert: {
           analysis_id: string
+          company_name?: string | null
           created_at?: string
           id?: string
           name: string
+          product_id?: string | null
+          product_name?: string | null
           type?: string
           website?: string | null
         }
         Update: {
           analysis_id?: string
+          company_name?: string | null
           created_at?: string
           id?: string
           name?: string
+          product_id?: string | null
+          product_name?: string | null
           type?: string
           website?: string | null
         }
@@ -161,6 +205,61 @@ export type Database = {
             columns: ["analysis_id"]
             isOneToOne: false
             referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          analysis_id: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          type: string
+          website: string | null
+        }
+        Insert: {
+          analysis_id: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          type?: string
+          website?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          type?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
