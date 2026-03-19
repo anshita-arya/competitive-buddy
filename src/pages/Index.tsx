@@ -63,7 +63,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <button
             className="flex items-center gap-3"
-            onClick={() => setView(isNewUser ? 'onboarding' : 'dashboard')}
+            onClick={() => setView(view === 'results' ? 'dashboard' : isNewUser ? 'onboarding' : 'dashboard')}
           >
             <div className="w-8 h-8 rounded-lg intel-gradient flex items-center justify-center">
               <Zap className="w-4 h-4 text-primary-foreground" />
