@@ -345,7 +345,7 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           </span>
                         </div>
                       </th>
-                      {competitors.map(comp => {
+                      {otherCompetitors.map(comp => {
                         const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
                         const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
                         return (
