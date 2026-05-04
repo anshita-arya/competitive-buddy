@@ -226,6 +226,8 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   }
 
   // Completed
+  const selfCompetitor = competitors.find(c => c.type === 'self' as any);
+  const otherCompetitors = competitors.filter(c => c.type !== 'self' as any);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
@@ -267,7 +269,7 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
 
               {/* Competitor overview cards */}
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {competitors.map(comp => {
+              {competitors.filter(c => c.type !== 'self' as any).map(comp => {
                   const compData = data.filter(d => d.competitor_id === comp.id && d.score);
                   const avgScore = compData.length
                     ? Math.round(compData.reduce((sum, d) => sum + (d.score || 0), 0) / compData.length * 10) / 10
@@ -343,7 +345,7 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           </span>
                         </div>
                       </th>
-                      {competitors.map(comp => {
+                      {otherCompetitors.map(comp => {
                         const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
                         const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
                         return (
@@ -372,10 +374,40 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                         <td className="p-3 font-medium text-muted-foreground text-xs sticky left-0 bg-inherit z-10 whitespace-nowrap">
                           {cat}
                         </td>
-                        <td className="p-3 align-top bg-primary/5 text-xs text-muted-foreground italic">
-                          Your product
-                        </td>
-                        {competitors.map(comp => {
+                        {(() => {
+                          const cellData = selfCompetitor ? getCellData(selfCompetitor.id, cat) : null;
+                          const key = `self:${cat}`;
+                          const isExpanded = expandedCells.has(key);
+                          return (
+                            <td className="p-3 align-top bg-primary/5">
+                              {cellData ? (
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <ScoreBadge score={cellData.score} />
+                                  </div>
+                                  {cellData.ai_summary && (
+                                    <div>
+                                      <p className={cn('text-xs text-muted-foreground leading-relaxed', !isExpanded && 'line-clamp-3')}>
+                                        {cellData.ai_summary}
+                                      </p>
+                                      {cellData.ai_summary.length > 150 && (
+                                        <button
+                                          onClick={() => toggleCell(key)}
+                                          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
+                                        >
+                                          {isExpanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-xs italic">Self-assessment pending</span>
+                              )}
+                            </td>
+                          );
+                        })()}
+                        {otherCompetitors.map(comp => {
                           const cellData = getCellData(comp.id, cat);
                           const key = `${comp.id}:${cat}`;
                           const isExpanded = expandedCells.has(key);
