@@ -130,6 +130,33 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
+  const [rerunning, setRerunning] = useState(false);
+
+  async function rerunAnalysis() {
+    if (rerunning) return;
+    setRerunning(true);
+    try {
+      // Clear previous results so the polling UI re-engages
+      await supabase.from('competitor_data').delete().eq('analysis_id', analysisId);
+      await supabase.from('analyses').update({
+        status: 'pending',
+        executive_summary: null,
+        recommendations: null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', analysisId);
+
+      const { error } = await supabase.functions.invoke('run-analysis', {
+        body: { analysis_id: analysisId },
+      });
+      if (error) throw error;
+      toast.success('Re-running analysis…');
+      await fetchData();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to rerun analysis');
+    } finally {
+      setRerunning(false);
+    }
+  }
 
   async function fetchData() {
     const [{ data: a }, { data: comps }, { data: cats }, { data: d }] = await Promise.all([
