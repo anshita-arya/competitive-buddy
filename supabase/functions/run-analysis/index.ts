@@ -129,7 +129,7 @@ async function analyzeWithAI(
         { role: 'system', content: systemPrompt },
         {
           role: 'user',
-          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\nRole: ${userRole}\n\nCompetitor data:\n${context}\n\nYou MUST produce exactly one analysis_item for EVERY competitor×category combination listed below (${competitors.length * categories.length} items total):\n${pairsDescription}\n\nUse exactly the competitor and category strings as given. Score 1-10 where 10 = highest threat/strength. Provide comprehensive executive summary and strategic recommendations.${userPromptSuffix}`,
+          content: `Analyze competitive landscape for:\nProduct: ${userProduct}\nCompany: ${userCompany}\nRole: ${userRole}\n\nNOTE: One of the entries below has type "self" — that is ${userCompany}'s own product (${userProduct}). For "self" rows, write a candid self-assessment for each category (current capability, strengths, known gaps) and score 1-10 reflecting ${userCompany}'s own strength in that category. For all other rows, analyze them as competitors normally.\n\nCompetitor data:\n${context}\n\nYou MUST produce exactly one analysis_item for EVERY competitor×category combination listed below (${competitors.length * categories.length} items total):\n${pairsDescription}\n\nUse exactly the competitor and category strings as given. Score 1-10 where 10 = highest threat/strength. Provide comprehensive executive summary and strategic recommendations.${userPromptSuffix}`,
         },
       ],
       tools: [
