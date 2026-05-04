@@ -249,8 +249,9 @@ Deno.serve(async (req) => {
       };
     });
 
-    // Update status to running
-    await supabase.from('analyses').update({ status: 'running' }).eq('id', analysis_id);
+    // Update status to running and clear any prior results (in case this is a rerun)
+    await supabase.from('analyses').update({ status: 'running', updated_at: new Date().toISOString() }).eq('id', analysis_id);
+    await supabase.from('competitor_data').delete().eq('analysis_id', analysis_id);
 
     const categoryNames = categories.map(c => c.name);
 

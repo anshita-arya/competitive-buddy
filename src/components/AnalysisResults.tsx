@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp, Clock, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface AnalysisResultsProps {
   analysisId: string;
@@ -129,6 +130,31 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(false);
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
+  const [rerunning, setRerunning] = useState(false);
+
+  async function rerunAnalysis() {
+    if (rerunning) return;
+    setRerunning(true);
+    try {
+      await supabase.from('analyses').update({
+        status: 'pending',
+        executive_summary: null,
+        recommendations: null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', analysisId);
+
+      const { error } = await supabase.functions.invoke('run-analysis', {
+        body: { analysis_id: analysisId },
+      });
+      if (error) throw error;
+      toast.success('Re-running analysis…');
+      await fetchData();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to rerun analysis');
+    } finally {
+      setRerunning(false);
+    }
+  }
 
   async function fetchData() {
     const [{ data: a }, { data: comps }, { data: cats }, { data: d }] = await Promise.all([
@@ -237,9 +263,19 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
           <p className="text-muted-foreground text-sm mt-1">
             {analysis.user_company} · {analysis.user_role} · {competitors.length} competitors · {categories.length} categories
           </p>
+          <p className="text-muted-foreground text-xs mt-1.5 flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
+            Last run {new Date(analysis.updated_at || analysis.created_at).toLocaleString(undefined, {
+              dateStyle: 'medium', timeStyle: 'short',
+            })}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5">✓ Completed</Badge>
+          <Button variant="outline" size="sm" onClick={rerunAnalysis} disabled={rerunning} className="gap-1.5">
+            <RotateCw className={cn('w-3.5 h-3.5', rerunning && 'animate-spin')} />
+            {rerunning ? 'Re-running…' : 'Rerun'}
+          </Button>
           {polling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
         </div>
       </div>
