@@ -372,6 +372,9 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                         <td className="p-3 font-medium text-muted-foreground text-xs sticky left-0 bg-inherit z-10 whitespace-nowrap">
                           {cat}
                         </td>
+                        <td className="p-3 align-top bg-primary/5 text-xs text-muted-foreground italic">
+                          Your product
+                        </td>
                         {competitors.map(comp => {
                           const cellData = getCellData(comp.id, cat);
                           const key = `${comp.id}:${cat}`;
