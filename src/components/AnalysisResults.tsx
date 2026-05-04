@@ -136,8 +136,6 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     if (rerunning) return;
     setRerunning(true);
     try {
-      // Clear previous results so the polling UI re-engages
-      await supabase.from('competitor_data').delete().eq('analysis_id', analysisId);
       await supabase.from('analyses').update({
         status: 'pending',
         executive_summary: null,
