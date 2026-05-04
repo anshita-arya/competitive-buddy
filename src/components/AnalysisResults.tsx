@@ -269,7 +269,7 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
 
               {/* Competitor overview cards */}
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {competitors.map(comp => {
+              {competitors.filter(c => c.type !== 'self' as any).map(comp => {
                   const compData = data.filter(d => d.competitor_id === comp.id && d.score);
                   const avgScore = compData.length
                     ? Math.round(compData.reduce((sum, d) => sum + (d.score || 0), 0) / compData.length * 10) / 10
