@@ -216,6 +216,24 @@ Deno.serve(async (req) => {
     if (!rawCompetitors?.length) throw new Error('No competitors found');
     if (!categories?.length) throw new Error('No categories found');
 
+    // Ensure a "self" competitor row exists for the user's own product so we
+    // can store and display per-category analysis for them in the comparison table.
+    let selfRow = rawCompetitors.find(c => c.type === 'self');
+    if (!selfRow) {
+      const { data: inserted } = await supabase.from('competitors').insert({
+        analysis_id,
+        type: 'self',
+        name: `${analysis.user_company} – ${analysis.user_product}`,
+        company_name: analysis.user_company,
+        product_name: analysis.user_product,
+        website: null,
+      }).select('id, product_id, company_name, product_name, website, type, name').single();
+      if (inserted) {
+        rawCompetitors.push(inserted);
+        selfRow = inserted;
+      }
+    }
+
     // Build enriched competitors, falling back to legacy `name` field for old data
     const competitors: EnrichedCompetitor[] = rawCompetitors.map(c => {
       const companyName = c.company_name || c.name?.split(' – ')[0] || c.name || 'Unknown';
