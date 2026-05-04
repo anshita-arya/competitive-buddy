@@ -263,9 +263,19 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
           <p className="text-muted-foreground text-sm mt-1">
             {analysis.user_company} · {analysis.user_role} · {competitors.length} competitors · {categories.length} categories
           </p>
+          <p className="text-muted-foreground text-xs mt-1.5 flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
+            Last run {new Date(analysis.updated_at || analysis.created_at).toLocaleString(undefined, {
+              dateStyle: 'medium', timeStyle: 'short',
+            })}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-primary border-primary/30 bg-primary/5">✓ Completed</Badge>
+          <Button variant="outline" size="sm" onClick={rerunAnalysis} disabled={rerunning} className="gap-1.5">
+            <RotateCw className={cn('w-3.5 h-3.5', rerunning && 'animate-spin')} />
+            {rerunning ? 'Re-running…' : 'Rerun'}
+          </Button>
           {polling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
         </div>
       </div>
