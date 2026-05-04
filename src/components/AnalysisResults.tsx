@@ -330,6 +330,19 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
                       <th className="text-left p-3 font-semibold text-muted-foreground w-40 sticky left-0 bg-muted/50 z-10">Category</th>
+                      <th className="text-left p-3 font-semibold min-w-[180px] bg-primary/5">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">{analysis.user_company}</span>
+                            <Badge variant="outline" className="text-xs ml-1 border-primary/40 text-primary bg-primary/10">
+                              ★ You
+                            </Badge>
+                          </div>
+                          <span className="text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded-full w-fit">
+                            {analysis.user_product}
+                          </span>
+                        </div>
+                      </th>
                       {competitors.map(comp => {
                         const companyLabel = comp.company_name || comp.name?.split(' – ')[0] || comp.name;
                         const productLabel = comp.product_name || comp.name?.split(' – ')[1] || null;
@@ -358,6 +371,9 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                       <tr key={cat} className={cn('border-b border-border/50', catIdx % 2 === 0 ? 'bg-background' : 'bg-muted/20')}>
                         <td className="p-3 font-medium text-muted-foreground text-xs sticky left-0 bg-inherit z-10 whitespace-nowrap">
                           {cat}
+                        </td>
+                        <td className="p-3 align-top bg-primary/5 text-xs text-muted-foreground italic">
+                          Your product
                         </td>
                         {competitors.map(comp => {
                           const cellData = getCellData(comp.id, cat);
