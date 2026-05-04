@@ -226,6 +226,8 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   }
 
   // Completed
+  const selfCompetitor = competitors.find(c => c.type === 'self' as any);
+  const otherCompetitors = competitors.filter(c => c.type !== 'self' as any);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header */}
