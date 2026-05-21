@@ -328,6 +328,18 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis?.status]);
 
+  // Auto-generate self-assessment if completed analysis lacks it
+  useEffect(() => {
+    if (analysis?.status !== 'completed') return;
+    if (!categories.length) return;
+    const selfComp = competitors.find(c => (c.type as any) === 'self');
+    const selfHasData = selfComp
+      ? data.some(d => d.competitor_id === selfComp.id && d.ai_summary)
+      : false;
+    if (!selfHasData && !selfLoading) generateSelfAssessment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, competitors.length, categories.length, data.length]);
+
   // Poll if running
   useEffect(() => {
     if (!analysis) return;
