@@ -199,8 +199,8 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     setData((d as CompetitorData[]) || []);
     if (a?.recent_announcements || a?.market_trends) {
       setIntel({
-        recent_announcements: a.recent_announcements || [],
-        market_trends: a.market_trends || [],
+        recent_announcements: Array.isArray(a.recent_announcements) ? (a.recent_announcements as any[]) : [],
+        market_trends: Array.isArray(a.market_trends) ? (a.market_trends as any[]) : [],
         intel_updated_at: a.intel_updated_at || null,
       });
     }
