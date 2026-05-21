@@ -123,12 +123,13 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 function ComparisonCell({
-  cellData, expanded, onToggle, emptyText,
+  cellData, expanded, onToggle, emptyText, isSelf = false,
 }: {
   cellData: CompetitorData | null | undefined;
   expanded: boolean;
   onToggle: () => void;
   emptyText: React.ReactNode;
+  isSelf?: boolean;
 }) {
   if (!cellData || (!cellData.ai_summary && !cellData.score)) {
     return <span className="text-muted-foreground text-xs italic">{emptyText}</span>;
@@ -139,7 +140,7 @@ function ComparisonCell({
   const hasMore = summary.length > firstSentence.length + 5;
   return (
     <div className="space-y-1.5">
-      <ScoreBadge score={cellData.score} />
+      {!isSelf && <ScoreBadge score={cellData.score} />}
       {summary && (
         <div>
           <div className="flex items-start gap-1.5 text-xs leading-snug">
