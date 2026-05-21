@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp, Clock, RotateCw } from 'lucide-react';
+import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp, Clock, RotateCw, Megaphone, Activity, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
