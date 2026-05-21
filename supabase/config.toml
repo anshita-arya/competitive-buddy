@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.run-analysis]
 verify_jwt = false
+
+[functions.market-intel]
+verify_jwt = false
