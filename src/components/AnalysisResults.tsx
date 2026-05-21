@@ -581,30 +581,16 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const isExpanded = expandedCells.has(key);
                           return (
                             <td className="p-3 align-top bg-primary/5">
-                              {cellData ? (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <ScoreBadge score={cellData.score} />
-                                  </div>
-                                  {cellData.ai_summary && (
-                                    <div>
-                                      <p className={cn('text-xs text-muted-foreground leading-relaxed', !isExpanded && 'line-clamp-3')}>
-                                        {cellData.ai_summary}
-                                      </p>
-                                      {cellData.ai_summary.length > 150 && (
-                                        <button
-                                          onClick={() => toggleCell(key)}
-                                          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                                        >
-                                          {isExpanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs italic">Self-assessment pending</span>
-                              )}
+                              <ComparisonCell
+                                cellData={cellData}
+                                expanded={isExpanded}
+                                onToggle={() => toggleCell(key)}
+                                emptyText={selfLoading ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> Generating…
+                                  </span>
+                                ) : 'Self-assessment pending'}
+                              />
                             </td>
                           );
                         })()}
@@ -614,30 +600,12 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const isExpanded = expandedCells.has(key);
                           return (
                             <td key={comp.id} className="p-3 align-top">
-                              {cellData ? (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <ScoreBadge score={cellData.score} />
-                                  </div>
-                                  {cellData.ai_summary && (
-                                    <div>
-                                      <p className={cn('text-xs text-muted-foreground leading-relaxed', !isExpanded && 'line-clamp-3')}>
-                                        {cellData.ai_summary}
-                                      </p>
-                                      {cellData.ai_summary.length > 150 && (
-                                        <button
-                                          onClick={() => toggleCell(key)}
-                                          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                                        >
-                                          {isExpanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">—</span>
-                              )}
+                              <ComparisonCell
+                                cellData={cellData}
+                                expanded={isExpanded}
+                                onToggle={() => toggleCell(key)}
+                                emptyText="—"
+                              />
                             </td>
                           );
                         })}
