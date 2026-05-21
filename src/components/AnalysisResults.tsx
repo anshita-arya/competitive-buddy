@@ -221,6 +221,24 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [rerunning, setRerunning] = useState(false);
   const [intel, setIntel] = useState<{ recent_announcements: any[]; market_trends: any[]; intel_updated_at: string | null } | null>(null);
   const [intelLoading, setIntelLoading] = useState(false);
+  const [selfLoading, setSelfLoading] = useState(false);
+
+  async function generateSelfAssessment() {
+    if (selfLoading) return;
+    setSelfLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('self-assessment', {
+        body: { analysisId },
+      });
+      if (error) throw error;
+      await fetchData();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to generate self assessment');
+    } finally {
+      setSelfLoading(false);
+    }
+  }
 
   async function loadIntel(force = false) {
     if (intelLoading) return;
