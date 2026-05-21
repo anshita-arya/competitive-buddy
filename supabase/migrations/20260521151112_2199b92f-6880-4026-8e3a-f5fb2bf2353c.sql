@@ -1,0 +1,2 @@
+ALTER TABLE public.competitors DROP CONSTRAINT competitors_type_check;
+ALTER TABLE public.competitors ADD CONSTRAINT competitors_type_check CHECK (type = ANY (ARRAY['direct'::text, 'disruptor'::text, 'self'::text]));
