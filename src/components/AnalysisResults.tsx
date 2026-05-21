@@ -122,6 +122,51 @@ function MarkdownText({ text }: { text: string }) {
   return <div className="space-y-1">{elements}</div>;
 }
 
+function ComparisonCell({
+  cellData, expanded, onToggle, emptyText,
+}: {
+  cellData: CompetitorData | null | undefined;
+  expanded: boolean;
+  onToggle: () => void;
+  emptyText: React.ReactNode;
+}) {
+  if (!cellData || (!cellData.ai_summary && !cellData.score)) {
+    return <span className="text-muted-foreground text-xs italic">{emptyText}</span>;
+  }
+  const summary = cellData.ai_summary || '';
+  // First sentence as bullet headline
+  const firstSentence = summary.split(/(?<=[.!?])\s+/)[0]?.trim() || summary;
+  const hasMore = summary.length > firstSentence.length + 5;
+  return (
+    <div className="space-y-1.5">
+      <ScoreBadge score={cellData.score} />
+      {summary && (
+        <div>
+          <div className="flex items-start gap-1.5 text-xs leading-snug">
+            <span className="mt-[5px] w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+            <span className="text-foreground/90">{firstSentence}</span>
+          </div>
+          {hasMore && (
+            <>
+              <button
+                onClick={onToggle}
+                className="text-[11px] text-primary hover:underline mt-1 inline-flex items-center gap-0.5"
+              >
+                {expanded ? <><ChevronUp className="w-3 h-3" />Hide details</> : <><ChevronDown className="w-3 h-3" />Details</>}
+              </button>
+              {expanded && (
+                <p className="mt-1.5 pl-2.5 border-l-2 border-primary/30 text-xs text-muted-foreground leading-relaxed">
+                  {summary}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IntelCard({
   title, icon, updatedAt, loading, onRefresh, empty, emptyText, children,
 }: {
