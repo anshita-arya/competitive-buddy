@@ -164,8 +164,13 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
         status: 'pending',
         executive_summary: null,
         recommendations: null,
+        recent_announcements: null,
+        market_trends: null,
+        intel_updated_at: null,
         updated_at: new Date().toISOString(),
       }).eq('id', analysisId);
+
+      setIntel(null);
 
       const { error } = await supabase.functions.invoke('run-analysis', {
         body: { analysis_id: analysisId },
@@ -192,6 +197,13 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     setCompetitors((comps as Competitor[]) || []);
     setCategories(cats?.map(c => c.name) || []);
     setData((d as CompetitorData[]) || []);
+    if (a?.recent_announcements || a?.market_trends) {
+      setIntel({
+        recent_announcements: a.recent_announcements || [],
+        market_trends: a.market_trends || [],
+        intel_updated_at: a.intel_updated_at || null,
+      });
+    }
     setLoading(false);
 
     return a?.status;
@@ -200,6 +212,15 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   useEffect(() => {
     fetchData();
   }, [analysisId]);
+
+  // Auto-load intel once analysis is completed and we don't have fresh data
+  useEffect(() => {
+    if (analysis?.status !== 'completed') return;
+    const stale = !intel || !intel.intel_updated_at ||
+      (Date.now() - new Date(intel.intel_updated_at).getTime()) > 24 * 60 * 60 * 1000;
+    if (stale && !intelLoading) loadIntel(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status]);
 
   // Poll if running
   useEffect(() => {
