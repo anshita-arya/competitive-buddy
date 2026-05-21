@@ -123,12 +123,13 @@ function MarkdownText({ text }: { text: string }) {
 }
 
 function ComparisonCell({
-  cellData, expanded, onToggle, emptyText,
+  cellData, expanded, onToggle, emptyText, isSelf = false,
 }: {
   cellData: CompetitorData | null | undefined;
   expanded: boolean;
   onToggle: () => void;
   emptyText: React.ReactNode;
+  isSelf?: boolean;
 }) {
   if (!cellData || (!cellData.ai_summary && !cellData.score)) {
     return <span className="text-muted-foreground text-xs italic">{emptyText}</span>;
@@ -139,7 +140,7 @@ function ComparisonCell({
   const hasMore = summary.length > firstSentence.length + 5;
   return (
     <div className="space-y-1.5">
-      <ScoreBadge score={cellData.score} />
+      {!isSelf && <ScoreBadge score={cellData.score} />}
       {summary && (
         <div>
           <div className="flex items-start gap-1.5 text-xs leading-snug">
@@ -580,11 +581,12 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const key = `self:${cat}`;
                           const isExpanded = expandedCells.has(key);
                           return (
-                            <td className="p-3 align-top bg-primary/5">
+                          <td className="p-3 align-top bg-primary/5">
                               <ComparisonCell
                                 cellData={cellData}
                                 expanded={isExpanded}
                                 onToggle={() => toggleCell(key)}
+                                isSelf
                                 emptyText={selfLoading ? (
                                   <span className="inline-flex items-center gap-1">
                                     <Loader2 className="w-3 h-3 animate-spin" /> Generating…
