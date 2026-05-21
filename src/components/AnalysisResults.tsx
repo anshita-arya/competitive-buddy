@@ -581,11 +581,12 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const key = `self:${cat}`;
                           const isExpanded = expandedCells.has(key);
                           return (
-                            <td className="p-3 align-top bg-primary/5">
+                          <td className="p-3 align-top bg-primary/5">
                               <ComparisonCell
                                 cellData={cellData}
                                 expanded={isExpanded}
                                 onToggle={() => toggleCell(key)}
+                                isSelf
                                 emptyText={selfLoading ? (
                                   <span className="inline-flex items-center gap-1">
                                     <Loader2 className="w-3 h-3 animate-spin" /> Generating…
