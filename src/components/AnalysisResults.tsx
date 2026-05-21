@@ -538,6 +538,83 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
               </div>
             </CardContent>
           </Card>
+            </div>
+            <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+              <IntelCard
+                title="Recent Announcements & Launches"
+                icon={<Megaphone className="w-5 h-5 text-primary" />}
+                updatedAt={intel?.intel_updated_at}
+                loading={intelLoading}
+                onRefresh={() => loadIntel(true)}
+                empty={!intel || !intel.recent_announcements?.length}
+                emptyText="No recent announcements found yet."
+              >
+                <div className="space-y-4">
+                  {intel?.recent_announcements?.map((group: any, gi: number) => (
+                    <div key={gi}>
+                      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <span className="w-1 h-3 rounded-full bg-primary" />
+                        {group.company}{group.product ? ` · ${group.product}` : ''}
+                      </p>
+                      <ul className="space-y-2.5 ml-2.5">
+                        {(group.items || []).map((it: any, i: number) => (
+                          <li key={i} className="border-l border-border pl-3 -ml-px">
+                            <a href={it.url} target="_blank" rel="noreferrer"
+                              className="text-xs font-medium text-foreground hover:text-primary inline-flex items-start gap-1 leading-snug">
+                              {it.title}
+                              <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60" />
+                            </a>
+                            {it.date && <p className="text-[10px] text-muted-foreground mt-0.5">{it.date}</p>}
+                            {it.highlight && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{it.highlight}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </IntelCard>
+
+              <IntelCard
+                title="Market Trends"
+                icon={<Activity className="w-5 h-5 text-primary" />}
+                updatedAt={intel?.intel_updated_at}
+                loading={intelLoading}
+                onRefresh={() => loadIntel(true)}
+                empty={!intel || !intel.market_trends?.length}
+                emptyText="No trend signals available yet."
+              >
+                <div className="space-y-4">
+                  {intel?.market_trends?.map((t: any, i: number) => (
+                    <div key={i} className="p-3 rounded-lg bg-muted/40 border border-border/60">
+                      <p className="text-xs font-semibold text-foreground mb-1.5">{t.title}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-2">{t.summary}</p>
+                      {!!t.signals?.length && (
+                        <ul className="space-y-1 mb-2">
+                          {t.signals.map((s: string, si: number) => (
+                            <li key={si} className="text-[11px] text-foreground/80 flex items-start gap-1.5">
+                              <span className="mt-1 w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+                              <span>{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {!!t.sources?.length && (
+                        <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-border/40">
+                          {t.sources.slice(0, 3).map((s: any, si: number) => (
+                            <a key={si} href={s.url} target="_blank" rel="noreferrer"
+                              className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5">
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              {s.title ? (s.title.length > 30 ? s.title.slice(0, 30) + '…' : s.title) : 'source'}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </IntelCard>
+            </aside>
+          </div>
         </TabsContent>
 
         {/* Recommendations */}
