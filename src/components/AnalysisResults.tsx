@@ -400,6 +400,8 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
 
         {/* Comparison Table */}
         <TabsContent value="table">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+            <div className="min-w-0">
           <Card className="border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
