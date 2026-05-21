@@ -122,6 +122,49 @@ function MarkdownText({ text }: { text: string }) {
   return <div className="space-y-1">{elements}</div>;
 }
 
+function IntelCard({
+  title, icon, updatedAt, loading, onRefresh, empty, emptyText, children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  updatedAt: string | null | undefined;
+  loading: boolean;
+  onRefresh: () => void;
+  empty: boolean;
+  emptyText: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {icon}{title}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1" onClick={onRefresh} disabled={loading} title="Refresh">
+            <RotateCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+          </Button>
+        </div>
+        {updatedAt && (
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" />
+            Updated {new Date(updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+          </p>
+        )}
+      </CardHeader>
+      <CardContent>
+        {loading && empty ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Scanning the web…
+          </div>
+        ) : empty ? (
+          <p className="text-xs text-muted-foreground italic">{emptyText}</p>
+        ) : children}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [analysis, setAnalysis] = useState<any>(null);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
