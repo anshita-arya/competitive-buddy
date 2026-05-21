@@ -131,6 +131,30 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [polling, setPolling] = useState(false);
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const [rerunning, setRerunning] = useState(false);
+  const [intel, setIntel] = useState<{ recent_announcements: any[]; market_trends: any[]; intel_updated_at: string | null } | null>(null);
+  const [intelLoading, setIntelLoading] = useState(false);
+
+  async function loadIntel(force = false) {
+    if (intelLoading) return;
+    setIntelLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('market-intel', {
+        body: { analysisId, force },
+      });
+      if (error) throw error;
+      setIntel({
+        recent_announcements: data?.recent_announcements || [],
+        market_trends: data?.market_trends || [],
+        intel_updated_at: data?.intel_updated_at || null,
+      });
+      if (force) toast.success('Intel refreshed');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to load market intel');
+    } finally {
+      setIntelLoading(false);
+    }
+  }
 
   async function rerunAnalysis() {
     if (rerunning) return;
