@@ -122,6 +122,51 @@ function MarkdownText({ text }: { text: string }) {
   return <div className="space-y-1">{elements}</div>;
 }
 
+function ComparisonCell({
+  cellData, expanded, onToggle, emptyText,
+}: {
+  cellData: CompetitorData | null | undefined;
+  expanded: boolean;
+  onToggle: () => void;
+  emptyText: React.ReactNode;
+}) {
+  if (!cellData || (!cellData.ai_summary && !cellData.score)) {
+    return <span className="text-muted-foreground text-xs italic">{emptyText}</span>;
+  }
+  const summary = cellData.ai_summary || '';
+  // First sentence as bullet headline
+  const firstSentence = summary.split(/(?<=[.!?])\s+/)[0]?.trim() || summary;
+  const hasMore = summary.length > firstSentence.length + 5;
+  return (
+    <div className="space-y-1.5">
+      <ScoreBadge score={cellData.score} />
+      {summary && (
+        <div>
+          <div className="flex items-start gap-1.5 text-xs leading-snug">
+            <span className="mt-[5px] w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+            <span className="text-foreground/90">{firstSentence}</span>
+          </div>
+          {hasMore && (
+            <>
+              <button
+                onClick={onToggle}
+                className="text-[11px] text-primary hover:underline mt-1 inline-flex items-center gap-0.5"
+              >
+                {expanded ? <><ChevronUp className="w-3 h-3" />Hide details</> : <><ChevronDown className="w-3 h-3" />Details</>}
+              </button>
+              {expanded && (
+                <p className="mt-1.5 pl-2.5 border-l-2 border-primary/30 text-xs text-muted-foreground leading-relaxed">
+                  {summary}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IntelCard({
   title, icon, updatedAt, loading, onRefresh, empty, emptyText, children,
 }: {
@@ -176,6 +221,24 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [rerunning, setRerunning] = useState(false);
   const [intel, setIntel] = useState<{ recent_announcements: any[]; market_trends: any[]; intel_updated_at: string | null } | null>(null);
   const [intelLoading, setIntelLoading] = useState(false);
+  const [selfLoading, setSelfLoading] = useState(false);
+
+  async function generateSelfAssessment() {
+    if (selfLoading) return;
+    setSelfLoading(true);
+    try {
+      const { error } = await supabase.functions.invoke('self-assessment', {
+        body: { analysisId },
+      });
+      if (error) throw error;
+      await fetchData();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to generate self assessment');
+    } finally {
+      setSelfLoading(false);
+    }
+  }
 
   async function loadIntel(force = false) {
     if (intelLoading) return;
@@ -264,6 +327,18 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     if (stale && !intelLoading) loadIntel(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analysis?.status]);
+
+  // Auto-generate self-assessment if completed analysis lacks it
+  useEffect(() => {
+    if (analysis?.status !== 'completed') return;
+    if (!categories.length) return;
+    const selfComp = competitors.find(c => (c.type as any) === 'self');
+    const selfHasData = selfComp
+      ? data.some(d => d.competitor_id === selfComp.id && d.ai_summary)
+      : false;
+    if (!selfHasData && !selfLoading) generateSelfAssessment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status, competitors.length, categories.length, data.length]);
 
   // Poll if running
   useEffect(() => {
@@ -506,30 +581,16 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const isExpanded = expandedCells.has(key);
                           return (
                             <td className="p-3 align-top bg-primary/5">
-                              {cellData ? (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <ScoreBadge score={cellData.score} />
-                                  </div>
-                                  {cellData.ai_summary && (
-                                    <div>
-                                      <p className={cn('text-xs text-muted-foreground leading-relaxed', !isExpanded && 'line-clamp-3')}>
-                                        {cellData.ai_summary}
-                                      </p>
-                                      {cellData.ai_summary.length > 150 && (
-                                        <button
-                                          onClick={() => toggleCell(key)}
-                                          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                                        >
-                                          {isExpanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs italic">Self-assessment pending</span>
-                              )}
+                              <ComparisonCell
+                                cellData={cellData}
+                                expanded={isExpanded}
+                                onToggle={() => toggleCell(key)}
+                                emptyText={selfLoading ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Loader2 className="w-3 h-3 animate-spin" /> Generating…
+                                  </span>
+                                ) : 'Self-assessment pending'}
+                              />
                             </td>
                           );
                         })()}
@@ -539,30 +600,12 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
                           const isExpanded = expandedCells.has(key);
                           return (
                             <td key={comp.id} className="p-3 align-top">
-                              {cellData ? (
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <ScoreBadge score={cellData.score} />
-                                  </div>
-                                  {cellData.ai_summary && (
-                                    <div>
-                                      <p className={cn('text-xs text-muted-foreground leading-relaxed', !isExpanded && 'line-clamp-3')}>
-                                        {cellData.ai_summary}
-                                      </p>
-                                      {cellData.ai_summary.length > 150 && (
-                                        <button
-                                          onClick={() => toggleCell(key)}
-                                          className="text-xs text-primary hover:underline mt-0.5 flex items-center gap-0.5"
-                                        >
-                                          {isExpanded ? <><ChevronUp className="w-3 h-3" />Less</> : <><ChevronDown className="w-3 h-3" />More</>}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-xs">—</span>
-                              )}
+                              <ComparisonCell
+                                cellData={cellData}
+                                expanded={isExpanded}
+                                onToggle={() => toggleCell(key)}
+                                emptyText="—"
+                              />
                             </td>
                           );
                         })}

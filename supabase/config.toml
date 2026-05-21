@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.market-intel]
 verify_jwt = false
+
+[functions.self-assessment]
+verify_jwt = false
