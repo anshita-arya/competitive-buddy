@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp, Clock, RotateCw } from 'lucide-react';
+import { Loader2, TrendingUp, AlertCircle, BarChart3, Lightbulb, RefreshCw, ChevronDown, ChevronUp, Clock, RotateCw, Megaphone, Activity, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -122,6 +122,49 @@ function MarkdownText({ text }: { text: string }) {
   return <div className="space-y-1">{elements}</div>;
 }
 
+function IntelCard({
+  title, icon, updatedAt, loading, onRefresh, empty, emptyText, children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  updatedAt: string | null | undefined;
+  loading: boolean;
+  onRefresh: () => void;
+  empty: boolean;
+  emptyText: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {icon}{title}
+          </CardTitle>
+          <Button variant="ghost" size="icon" className="h-7 w-7 -mt-1 -mr-1" onClick={onRefresh} disabled={loading} title="Refresh">
+            <RotateCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
+          </Button>
+        </div>
+        {updatedAt && (
+          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" />
+            Updated {new Date(updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+          </p>
+        )}
+      </CardHeader>
+      <CardContent>
+        {loading && empty ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Scanning the web…
+          </div>
+        ) : empty ? (
+          <p className="text-xs text-muted-foreground italic">{emptyText}</p>
+        ) : children}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [analysis, setAnalysis] = useState<any>(null);
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
@@ -131,6 +174,30 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   const [polling, setPolling] = useState(false);
   const [expandedCells, setExpandedCells] = useState<Set<string>>(new Set());
   const [rerunning, setRerunning] = useState(false);
+  const [intel, setIntel] = useState<{ recent_announcements: any[]; market_trends: any[]; intel_updated_at: string | null } | null>(null);
+  const [intelLoading, setIntelLoading] = useState(false);
+
+  async function loadIntel(force = false) {
+    if (intelLoading) return;
+    setIntelLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('market-intel', {
+        body: { analysisId, force },
+      });
+      if (error) throw error;
+      setIntel({
+        recent_announcements: data?.recent_announcements || [],
+        market_trends: data?.market_trends || [],
+        intel_updated_at: data?.intel_updated_at || null,
+      });
+      if (force) toast.success('Intel refreshed');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || 'Failed to load market intel');
+    } finally {
+      setIntelLoading(false);
+    }
+  }
 
   async function rerunAnalysis() {
     if (rerunning) return;
@@ -140,8 +207,13 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
         status: 'pending',
         executive_summary: null,
         recommendations: null,
+        recent_announcements: null,
+        market_trends: null,
+        intel_updated_at: null,
         updated_at: new Date().toISOString(),
       }).eq('id', analysisId);
+
+      setIntel(null);
 
       const { error } = await supabase.functions.invoke('run-analysis', {
         body: { analysis_id: analysisId },
@@ -168,6 +240,13 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
     setCompetitors((comps as Competitor[]) || []);
     setCategories(cats?.map(c => c.name) || []);
     setData((d as CompetitorData[]) || []);
+    if (a?.recent_announcements || a?.market_trends) {
+      setIntel({
+        recent_announcements: Array.isArray(a.recent_announcements) ? (a.recent_announcements as any[]) : [],
+        market_trends: Array.isArray(a.market_trends) ? (a.market_trends as any[]) : [],
+        intel_updated_at: a.intel_updated_at || null,
+      });
+    }
     setLoading(false);
 
     return a?.status;
@@ -176,6 +255,15 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
   useEffect(() => {
     fetchData();
   }, [analysisId]);
+
+  // Auto-load intel once analysis is completed and we don't have fresh data
+  useEffect(() => {
+    if (analysis?.status !== 'completed') return;
+    const stale = !intel || !intel.intel_updated_at ||
+      (Date.now() - new Date(intel.intel_updated_at).getTime()) > 24 * 60 * 60 * 1000;
+    if (stale && !intelLoading) loadIntel(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis?.status]);
 
   // Poll if running
   useEffect(() => {
@@ -355,6 +443,8 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
 
         {/* Comparison Table */}
         <TabsContent value="table">
+          <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+            <div className="min-w-0">
           <Card className="border-border/60 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -491,6 +581,83 @@ export default function AnalysisResults({ analysisId }: AnalysisResultsProps) {
               </div>
             </CardContent>
           </Card>
+            </div>
+            <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+              <IntelCard
+                title="Recent Announcements & Launches"
+                icon={<Megaphone className="w-5 h-5 text-primary" />}
+                updatedAt={intel?.intel_updated_at}
+                loading={intelLoading}
+                onRefresh={() => loadIntel(true)}
+                empty={!intel || !intel.recent_announcements?.length}
+                emptyText="No recent announcements found yet."
+              >
+                <div className="space-y-4">
+                  {intel?.recent_announcements?.map((group: any, gi: number) => (
+                    <div key={gi}>
+                      <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <span className="w-1 h-3 rounded-full bg-primary" />
+                        {group.company}{group.product ? ` · ${group.product}` : ''}
+                      </p>
+                      <ul className="space-y-2.5 ml-2.5">
+                        {(group.items || []).map((it: any, i: number) => (
+                          <li key={i} className="border-l border-border pl-3 -ml-px">
+                            <a href={it.url} target="_blank" rel="noreferrer"
+                              className="text-xs font-medium text-foreground hover:text-primary inline-flex items-start gap-1 leading-snug">
+                              {it.title}
+                              <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0 opacity-60" />
+                            </a>
+                            {it.date && <p className="text-[10px] text-muted-foreground mt-0.5">{it.date}</p>}
+                            {it.highlight && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{it.highlight}</p>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </IntelCard>
+
+              <IntelCard
+                title="Market Trends"
+                icon={<Activity className="w-5 h-5 text-primary" />}
+                updatedAt={intel?.intel_updated_at}
+                loading={intelLoading}
+                onRefresh={() => loadIntel(true)}
+                empty={!intel || !intel.market_trends?.length}
+                emptyText="No trend signals available yet."
+              >
+                <div className="space-y-4">
+                  {intel?.market_trends?.map((t: any, i: number) => (
+                    <div key={i} className="p-3 rounded-lg bg-muted/40 border border-border/60">
+                      <p className="text-xs font-semibold text-foreground mb-1.5">{t.title}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-2">{t.summary}</p>
+                      {!!t.signals?.length && (
+                        <ul className="space-y-1 mb-2">
+                          {t.signals.map((s: string, si: number) => (
+                            <li key={si} className="text-[11px] text-foreground/80 flex items-start gap-1.5">
+                              <span className="mt-1 w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+                              <span>{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {!!t.sources?.length && (
+                        <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-border/40">
+                          {t.sources.slice(0, 3).map((s: any, si: number) => (
+                            <a key={si} href={s.url} target="_blank" rel="noreferrer"
+                              className="text-[10px] text-primary hover:underline inline-flex items-center gap-0.5">
+                              <ExternalLink className="w-2.5 h-2.5" />
+                              {s.title ? (s.title.length > 30 ? s.title.slice(0, 30) + '…' : s.title) : 'source'}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </IntelCard>
+            </aside>
+          </div>
         </TabsContent>
 
         {/* Recommendations */}

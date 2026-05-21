@@ -19,6 +19,9 @@ export type Database = {
           created_at: string
           executive_summary: string | null
           id: string
+          intel_updated_at: string | null
+          market_trends: Json | null
+          recent_announcements: Json | null
           recommendations: string | null
           status: string
           updated_at: string
@@ -31,6 +34,9 @@ export type Database = {
           created_at?: string
           executive_summary?: string | null
           id?: string
+          intel_updated_at?: string | null
+          market_trends?: Json | null
+          recent_announcements?: Json | null
           recommendations?: string | null
           status?: string
           updated_at?: string
@@ -43,6 +49,9 @@ export type Database = {
           created_at?: string
           executive_summary?: string | null
           id?: string
+          intel_updated_at?: string | null
+          market_trends?: Json | null
+          recent_announcements?: Json | null
           recommendations?: string | null
           status?: string
           updated_at?: string
