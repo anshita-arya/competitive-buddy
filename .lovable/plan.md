@@ -1,56 +1,60 @@
 
-## Plan: Fix 3 bugs in the SSO flow
+## Plan: Add "Recent Announcements" + "Market Trends" side panels on the Comparison page
 
-### Context
-The Lovable **preview** shows a permanent loading spinner because the sandbox iframe blocks token-refresh network calls — this is expected behavior in the preview, not a code bug. The published URL (competitive-buddy.lovable.app) works for auth as confirmed by the auth logs.
+### What gets built
 
-However, there are 3 real bugs that affect the published app:
+On the **Comparison** tab of `AnalysisResults`, add a right-hand rail with two stacked cards:
 
----
+1. **Recent Announcements & Launches** — competitor/product news (product launches, feature releases, funding, partnerships, exec moves) for each competitor in the analysis, grouped by company, each item with title, date, source link, and a 1-line "why it matters" highlight.
+2. **Market Trends** — industry-level signals for the user's company–product space (emerging tech, shifting buyer behavior, analyst takes, regulatory moves), each rendered as a trend card with a short narrative + supporting source links.
 
-### Bug 1 — Profile never auto-created on signup (critical)
-The `handle_new_user()` database function exists but its trigger was never registered in the database. The `<db-triggers>` section explicitly says "no triggers". This means every user who signs in for the first time gets `profile = null`, so their name and avatar never appear in the header or dashboard.
-
-**Fix:** Create a migration that registers the trigger on `auth.users`.
-
-```sql
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+Layout on the Comparison tab becomes:
+```text
+[ Comparison table .................. ][ Announcements ]
+[ ................................... ][ Market trends ]
 ```
+On narrow screens the rail stacks under the table.
 
-Additionally, backfill profiles for the 2 existing users (Anshita/Google and Apple private relay user) who signed up before the trigger existed.
+Each card shows: a "Last refreshed" timestamp, a small **Refresh** button (per card), and skeletons while loading. Empty/error states are handled inline.
 
----
+### Where the data comes from
 
-### Bug 2 — `isNewUser` stays `true` after first analysis (logic bug)
-`refreshIsNewUser()` is called inside `handleAnalysisComplete()` with `await`, but the state update is async — the parent `Index` component re-renders and `getEffectiveView()` still reads the stale `isNewUser=true` from the previous render. The user sees the onboarding again instead of being redirected to results.
+A new edge function **`market-intel`** generates both feeds:
 
-**Fix:** In `Index.tsx`, after calling `refreshIsNewUser()`, explicitly force the view to `'results'` (which is already done via `setView('results')` called before `refreshIsNewUser`). The real fix is to ensure `getEffectiveView()` uses the locally set `view` state as the source of truth when it is not null — which the current code already does (`if (view !== null) return view`). 
+- **Announcements**: Firecrawl `search` per competitor (queries like `"<company> <product> launch OR announcement OR release"`, time-filtered `tbs: qdr:m`), then Gemini (`google/gemini-2.5-flash`) condenses each result into `{ company, title, date, url, highlight }`.
+- **Market trends**: Firecrawl `search` on industry-level queries derived from `user_company` + `user_product` + analysis categories (e.g. `"<industry> trends 2026"`, `"<category> market signals"`), Gemini synthesises 4–6 trend cards `{ title, summary, signals[], sources[] }`.
 
-The actual bug is subtler: `view` is set to `'results'` correctly, but `isNewUser` remains `true` until the next render cycle after `refreshIsNewUser` completes. This causes no real problem since `view !== null` takes precedence. However, if the user navigates back to the logo (which calls `setView(isNewUser ? 'onboarding' : 'dashboard')`), they'd land on onboarding instead of dashboard because `isNewUser` hasn't updated yet.
+Function input: `{ analysisId }`. It loads the analysis + competitors, runs both flows in parallel, writes results back to the `analyses` row, returns the payload.
 
-**Fix:** In the logo click handler in `Index.tsx`, always navigate to `'dashboard'` when the user has already completed an analysis (i.e., `view === 'results'`), regardless of `isNewUser`.
+### Caching & refresh
 
----
+Add two columns to `analyses` (migration):
+- `recent_announcements jsonb`
+- `market_trends jsonb`
+- `intel_updated_at timestamptz`
 
-### Bug 3 — Footer "Connect" text missing
-The footer LinkedIn link shows only an icon with no text. The `Connect` text was accidentally removed.
+On first view of the Comparison tab, the UI:
+- Renders cached data immediately if present.
+- If missing or older than 24h, auto-invokes `market-intel`.
+- The per-card **Refresh** button re-invokes the function (force flag) and updates just that section's slice.
 
-**Fix:** Restore `Connect` text before the LinkedIn icon in `Index.tsx` footer.
+The existing `rerunAnalysis` flow also clears these so a full rerun regenerates intel.
 
----
-
-### Files to change
+### Files
 
 | File | Change |
 |------|--------|
-| New migration | Register `on_auth_user_created` trigger + backfill existing users |
-| `src/pages/Index.tsx` | Fix logo-click nav logic + restore "Connect" text in footer |
+| New migration | Add `recent_announcements`, `market_trends`, `intel_updated_at` to `public.analyses` |
+| New `supabase/functions/market-intel/index.ts` | Firecrawl + Gemini pipeline, writes back to `analyses` |
+| `supabase/config.toml` | Register `[functions.market-intel]` with `verify_jwt = false` |
+| `src/components/AnalysisResults.tsx` | Restructure Comparison tab into 2-col grid; add `RecentAnnouncementsCard` + `MarketTrendsCard` (can be inline subcomponents); fetch/refresh logic; clear intel on rerun |
 
----
+### Out of scope
+- No changes to the Summary or Strategy tabs.
+- No new tables (kept on `analyses` for simplicity); if volume grows we can split into `analysis_intel` later.
+- No realtime subscription — manual refresh + 24h staleness check is enough for v1.
 
-### What this does NOT change
-- Auth flow itself (Google + Apple SSO) — already working correctly on the published URL
-- Database schema — no table changes needed
-- The preview loading spinner — this is expected sandbox behavior, not a bug
+### Dependencies / assumptions
+- `FIRECRAWL_API_KEY` is already configured (confirmed in secrets).
+- `LOVABLE_API_KEY` is available for Gemini calls via the AI gateway.
+- Existing categories on the analysis give enough signal to derive "industry" — we'll combine `user_company`, `user_product`, and top categories for the trend queries.
